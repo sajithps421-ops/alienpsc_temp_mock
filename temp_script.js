@@ -1,4 +1,5 @@
 // ---------------- LOGIN ----------------
+console.log("Temp Script Loaded");
 window.login = function () {
   const nameInput = document.getElementById("name");
 
