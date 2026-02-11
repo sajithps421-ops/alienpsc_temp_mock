@@ -4,14 +4,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   console.log("DOM READY");
 
-  // LOGIN
+  // ---------------- LOGIN ----------------
   window.login = function () {
     const nameInput = document.getElementById("name");
 
-    if (!nameInput) {
-      alert("Input not found");
-      return;
-    }
+    if (!nameInput) return;
 
     const name = nameInput.value.trim();
 
@@ -24,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
     window.location.href = "temp_dashboard.html";
   };
 
-  // SELECT LEVEL
+  // ---------------- SELECT LEVEL ----------------
   window.selectLevel = function (level) {
     localStorage.setItem("temp_level", level);
 
@@ -33,6 +30,17 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       window.location.href = "temp_tenth_list.html";
     }
+  };
+
+  // ---------------- START EXAM ----------------
+  window.startExam = function (mockNumber) {
+    localStorage.setItem("mock_id", mockNumber);
+    window.location.href = "temp_exam.html";
+  };
+
+  // ---------------- GO BACK ----------------
+  window.goBack = function () {
+    window.history.back();
   };
 
 });
