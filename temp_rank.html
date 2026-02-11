@@ -4,26 +4,92 @@
   <title>Rank List</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <div class="card">
-  <h2>Rank List</h2>
-  <div id="rankList">
-    <p>1️⃣ Demo User – 10</p>
-    <p>2️⃣ Demo User – 8</p>
-    <p>3️⃣ Demo User – 6</p>
+
+  <h2>🏆 Rank List</h2>
+
+  <div id="rankContainer">
+    Loading rank list...
   </div>
 
-  <button onclick="goHome()">Home</button>
+  <br>
+  <button onclick="goBack()">⬅ Back</button>
+
 </div>
 
 <script>
-function goHome(){
-  window.location.href="index.html";
+
+/* ---------- SUPABASE ---------- */
+const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+/* ---------- LOAD RANK LIST ---------- */
+async function loadRankList(){
+
+  const mockId = localStorage.getItem("mock_id");
+
+  const { data, error } = await supabaseClient
+    .from("temp_results")
+    .select("*")
+    .eq("mock_id", mockId)
+    .order("score", { ascending: false })
+    .order("time_used", { ascending: true });
+
+  const container = document.getElementById("rankContainer");
+
+  if(error){
+    container.innerHTML = "Error loading rank list";
+    return;
+  }
+
+  if(!data || data.length === 0){
+    container.innerHTML = "No attempts yet.";
+    return;
+  }
+
+  container.innerHTML = "";
+
+  data.forEach((row, index) => {
+
+    const div = document.createElement("div");
+    div.style.padding = "12px";
+    div.style.marginTop = "10px";
+    div.style.borderRadius = "14px";
+    div.style.background = "#f1f5f9";
+    div.style.fontWeight = "600";
+
+    let medal = "";
+    if(index === 0) medal = "🥇";
+    if(index === 1) medal = "🥈";
+    if(index === 2) medal = "🥉";
+
+    div.innerHTML = `
+      ${medal} Rank ${index+1} <br>
+      👤 ${row.user_name} <br>
+      🎯 Score: ${row.score} / ${row.total} <br>
+      ⏱ Time: ${row.time_used} sec
+    `;
+
+    container.appendChild(div);
+  });
 }
+
+function goBack(){
+  window.location.href = "temp_dashboard.html";
+}
+
+loadRankList();
+
 </script>
+
 </body>
 </html>
-
-
