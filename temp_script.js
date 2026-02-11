@@ -1,31 +1,39 @@
 console.log("TEMP SCRIPT LOADED");
 
+// Wait until page loads
 document.addEventListener("DOMContentLoaded", function () {
+  console.log("DOM READY");
 
-  const loginBtn = document.getElementById("loginBtn");
+  // LOGIN FUNCTION
+  window.login = function () {
+    const nameInput = document.getElementById("name");
 
-  if (loginBtn) {
-    loginBtn.addEventListener("click", function () {
+    if (!nameInput) {
+      alert("Input not found");
+      return;
+    }
 
-      const nameInput = document.getElementById("name");
+    const name = nameInput.value.trim();
 
-      if (!nameInput) {
-        console.error("Name input not found");
-        return;
-      }
+    if (!name) {
+      alert("Enter your name");
+      return;
+    }
 
-      const name = nameInput.value.trim();
+    localStorage.setItem("temp_name", name);
+    window.location.href = "temp_dashboard.html";
+  };
 
-      if (!name) {
-        alert("Enter your name");
-        return;
-      }
+  // SELECT LEVEL FUNCTION
+  window.selectLevel = function (level) {
+    localStorage.setItem("temp_level", level);
 
-      localStorage.setItem("temp_name", name);
-      window.location.href = "temp_dashboard.html";
-
-    });
-  }
+    if (level === "degree") {
+      window.location.href = "temp_degree_list.html";
+    } else {
+      window.location.href = "temp_tenth_list.html";
+    }
+  };
 
 });
 
