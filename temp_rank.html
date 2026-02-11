@@ -47,7 +47,8 @@ async function loadRankList(){
   const container = document.getElementById("rankContainer");
 
   if(error){
-    container.innerHTML = "Error loading rank list";
+    console.error("SUPABASE ERROR:", error);
+    alert("Error: " + error.message);
     return;
   }
 
