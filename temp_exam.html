@@ -4,7 +4,6 @@
   <title>Mock Exam</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -22,7 +21,7 @@
     </div>
   </div>
 
-  <!-- TIMER PROGRESS BAR -->
+  <!-- PROGRESS BAR -->
   <div style="width:100%; background:#e2e8f0; height:8px; border-radius:10px; margin:10px 0;">
     <div id="progressBar" style="height:8px; width:100%; background:#22c55e; border-radius:10px;"></div>
   </div>
@@ -41,25 +40,36 @@
 
 /* ---------- SUPABASE ---------- */
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY"; // 🔥 Replace with real key
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
 /* ---------- VARIABLES ---------- */
 let questions = [];
 let currentIndex = 0;
 let answers = {};
 let lang = "en";
+let examSubmitted = false;
 
-const mockId = localStorage.getItem("mock_id");
+const mockId = parseInt(localStorage.getItem("mock_id"));
 const userName = localStorage.getItem("temp_name");
 
 /* ---------- TIMER ---------- */
 let timeLeft = 0;
 let totalTime = 0;
 let timerInterval;
+let warningPlayed = false;
 
 /* ---------- LOAD QUESTIONS ---------- */
 async function loadQuestions() {
+
+  if (!mockId || !userName) {
+    alert("Session expired");
+    window.location.href = "temp_login.html";
+    return;
+  }
 
   const { data, error } = await supabaseClient
     .from("temp_questions")
@@ -67,28 +77,29 @@ async function loadQuestions() {
     .eq("mock_id", mockId)
     .order("id", { ascending: true });
 
-  if(error){
+  if (error) {
+    console.error(error);
     alert("Error loading questions");
     return;
   }
 
   questions = data || [];
 
-  if(questions.length === 0){
+  if (questions.length === 0) {
     document.getElementById("questionBox").innerHTML =
       "<h3>No Questions Found</h3>";
     return;
   }
 
-  totalTime = questions.length * 45;
+  totalTime = questions.length * 45; // 45 sec per question
   timeLeft = totalTime;
 
   renderQuestion();
   startTimer();
 }
 
-/* ---------- TIMER FUNCTION ---------- */
-function startTimer(){
+/* ---------- TIMER ---------- */
+function startTimer() {
 
   timerInterval = setInterval(() => {
 
@@ -98,22 +109,21 @@ function startTimer(){
     document.getElementById("timerBox").innerText =
       `⏱ ${minutes.toString().padStart(2,"0")}:${seconds.toString().padStart(2,"0")}`;
 
-    /* Progress bar */
     const percentage = (timeLeft / totalTime) * 100;
     const progressBar = document.getElementById("progressBar");
     progressBar.style.width = percentage + "%";
 
-    /* Color change */
-    if(timeLeft <= totalTime * 0.3){
+    if (percentage <= 30) {
       progressBar.style.background = "#f59e0b";
     }
 
-    if(timeLeft <= 10){
-      progressBar.style.background = "#ef4444";
+    if (timeLeft <= 10 && !warningPlayed) {
+      warningPlayed = true;
       playWarning();
+      progressBar.style.background = "#ef4444";
     }
 
-    if(timeLeft <= 0){
+    if (timeLeft <= 0) {
       clearInterval(timerInterval);
       submitExam();
     }
@@ -162,7 +172,7 @@ function renderQuestion(){
   });
 }
 
-/* ---------- NAV ---------- */
+/* ---------- NAVIGATION ---------- */
 function nextQ(){
   if(currentIndex < questions.length-1){
     currentIndex++;
@@ -186,6 +196,9 @@ function toggleLang(){
 /* ---------- SUBMIT ---------- */
 async function submitExam(){
 
+  if(examSubmitted) return; // prevent double submit
+  examSubmitted = true;
+
   clearInterval(timerInterval);
 
   let score = 0;
@@ -197,8 +210,7 @@ async function submitExam(){
 
   const timeUsed = totalTime - timeLeft;
 
-  /* SAVE TO SUPABASE */
-  await supabaseClient
+  const { error } = await supabaseClient
     .from("temp_results")
     .insert([
       {
@@ -209,6 +221,12 @@ async function submitExam(){
         time_used: timeUsed
       }
     ]);
+
+  if(error){
+    console.error(error);
+    alert("Error saving result");
+    return;
+  }
 
   localStorage.setItem("temp_score", score);
   localStorage.setItem("temp_total", questions.length);
@@ -230,4 +248,3 @@ loadQuestions();
 
 </body>
 </html>
-
