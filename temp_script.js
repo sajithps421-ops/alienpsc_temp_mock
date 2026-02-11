@@ -13,15 +13,21 @@ window.login = function () {
     alert("Enter your name");
     return;
   }
-  function startExam(mockNumber) {
-    localStorage.setItem("mock_id", mockNumber);
-    window.location.href = "temp_exam.html";
-}
-
-function goBack() {
-    window.location.href = "temp_dashboard.html";
-}
 
   localStorage.setItem("temp_name", name);
   window.location.href = "temp_dashboard.html";
 };
+
+
+// ---------------- START EXAM ----------------
+window.startExam = function (mockNumber) {
+  localStorage.setItem("mock_id", mockNumber);
+  window.location.href = "temp_exam.html";
+};
+
+
+// ---------------- GO BACK ----------------
+window.goBack = function () {
+  window.location.href = "temp_dashboard.html";
+};
+
