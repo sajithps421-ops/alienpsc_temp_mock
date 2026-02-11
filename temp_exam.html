@@ -11,9 +11,16 @@
 <body>
 
 <div class="card" id="questionBox">
+
+  <!-- TOP BAR -->
   <div class="top">
     <div id="qCount">Question 1</div>
-    <button class="small-btn" onclick="exitExam()">Exit</button>
+
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button class="small-btn" onclick="toggleLang()">🌐 EN / ML</button>
+      <button class="small-btn" id="timerBox">⏱ 00:00</button>
+      <button class="small-btn" onclick="exitExam()">Exit</button>
+    </div>
   </div>
 
   <h3 id="qText">Loading...</h3>
@@ -23,11 +30,12 @@
   <br>
   <button onclick="prevQ()">Previous</button>
   <button onclick="nextQ()">Next</button>
-  <button onclick="toggleLang()">EN / ML</button>
   <button onclick="submitExam()">Submit</button>
+
 </div>
 
 <script>
+
 /* ---------- SUPABASE INIT ---------- */
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
@@ -43,6 +51,10 @@ let answers = {};
 let lang = "en";
 
 const mockId = localStorage.getItem("mock_id");
+
+/* ---------- TIMER VARIABLES ---------- */
+let timeLeft = 0;
+let timerInterval;
 
 /* ---------- LOAD QUESTIONS ---------- */
 async function loadQuestions() {
@@ -66,17 +78,52 @@ async function loadQuestions() {
   }
 
   questions = data || [];
-  renderQuestion();
-}
 
-/* ---------- RENDER ---------- */
-function renderQuestion(){
-
-  if(!questions.length){
+  if(questions.length === 0){
     document.getElementById("questionBox").innerHTML =
       "<h3>No Questions Found</h3>";
     return;
   }
+
+  /* ⏱ Dynamic Timer: 45 sec per question */
+  timeLeft = questions.length * 45;
+
+  renderQuestion();
+  startTimer();
+}
+
+/* ---------- TIMER FUNCTION ---------- */
+function startTimer(){
+
+  timerInterval = setInterval(() => {
+
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+
+    const timerBox = document.getElementById("timerBox");
+
+    timerBox.innerText =
+      `⏱ ${minutes.toString().padStart(2,"0")}:${seconds.toString().padStart(2,"0")}`;
+
+    /* Red color when last 1 minute */
+    if(timeLeft <= 60){
+      timerBox.style.background = "#ef4444";
+      timerBox.style.color = "#fff";
+    }
+
+    if(timeLeft <= 0){
+      clearInterval(timerInterval);
+      alert("Time Up! Exam Submitted Automatically.");
+      submitExam();
+    }
+
+    timeLeft--;
+
+  }, 1000);
+}
+
+/* ---------- RENDER ---------- */
+function renderQuestion(){
 
   const q = questions[currentIndex];
 
@@ -132,6 +179,9 @@ function toggleLang(){
 
 /* ---------- SUBMIT ---------- */
 function submitExam(){
+
+  clearInterval(timerInterval);
+
   let score = 0;
 
   questions.forEach((q,i)=>{
@@ -148,6 +198,7 @@ function submitExam(){
 
 /* ---------- EXIT ---------- */
 function exitExam(){
+  clearInterval(timerInterval);
   window.location.href = "temp_dashboard.html";
 }
 
