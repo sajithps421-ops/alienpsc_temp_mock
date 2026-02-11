@@ -1,27 +1,48 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Select Level</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="temp_style.css">
-</head>
-<body>
+// ---------------- LOGIN ----------------
+window.login = function () {
+  const nameInput = document.getElementById("name");
 
-<div class="card">
-  <h2>Select Mock Level</h2>
+  if (!nameInput) {
+    console.error("Name input not found");
+    return;
+  }
 
-  <button onclick="selectLevel('degree')">
-    🎓 Degree Level Mock Test
-  </button>
+  const name = nameInput.value.trim();
 
-  <br><br>
+  if (!name) {
+    alert("Enter your name");
+    return;
+  }
 
-  <button onclick="selectLevel('10th')">
-    🏫 10th & LGS Level Mock Test
-  </button>
+  localStorage.setItem("temp_name", name);
+  window.location.href = "temp_dashboard.html";
+};
 
-</div>
 
-<script src="temp_script.js"></script>
-</body>
-</html>
+// ---------------- SELECT LEVEL ----------------
+window.selectLevel = function(level) {
+
+  localStorage.setItem("temp_level", level);
+
+  if(level === "degree"){
+      window.location.href = "temp_degree_list.html";
+  }
+
+  if(level === "10th"){
+      window.location.href = "temp_tenth_list.html";
+  }
+};
+
+
+// ---------------- START EXAM ----------------
+window.startExam = function(mockNumber) {
+  localStorage.setItem("mock_id", mockNumber);
+  window.location.href = "temp_exam.html";
+};
+
+
+// ---------------- GO BACK ----------------
+window.goBack = function() {
+  window.location.href = "temp_dashboard.html";
+};
+
