@@ -3,7 +3,8 @@
 <script>
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 
 let questions = [];
 let currentIndex = 0;
@@ -20,7 +21,7 @@ async function loadQuestions() {
     return;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("temp_questions")
     .select("*")
     .eq("mock_id", mockId)
