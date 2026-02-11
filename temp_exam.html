@@ -1,11 +1,42 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mock Exam</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="temp_style.css">
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="card" id="questionBox">
+  <div class="top">
+    <div id="qCount">Question 1</div>
+    <button class="small-btn" onclick="exitExam()">Exit</button>
+  </div>
+
+  <h3 id="qText">Loading...</h3>
+
+  <div id="options"></div>
+
+  <br>
+  <button onclick="prevQ()">Previous</button>
+  <button onclick="nextQ()">Next</button>
+  <button onclick="toggleLang()">EN / ML</button>
+  <button onclick="submitExam()">Submit</button>
+</div>
 
 <script>
+/* ---------- SUPABASE INIT ---------- */
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
+/* ---------- VARIABLES ---------- */
 let questions = [];
 let currentIndex = 0;
 let answers = {};
@@ -13,6 +44,7 @@ let lang = "en";
 
 const mockId = localStorage.getItem("mock_id");
 
+/* ---------- LOAD QUESTIONS ---------- */
 async function loadQuestions() {
 
   if(!mockId){
@@ -33,14 +65,15 @@ async function loadQuestions() {
     return;
   }
 
-  questions = data;
+  questions = data || [];
   renderQuestion();
 }
 
+/* ---------- RENDER ---------- */
 function renderQuestion(){
 
   if(!questions.length){
-    document.getElementById("questionBox").innerHTML = 
+    document.getElementById("questionBox").innerHTML =
       "<h3>No Questions Found</h3>";
     return;
   }
@@ -76,6 +109,7 @@ function renderQuestion(){
   });
 }
 
+/* ---------- NAVIGATION ---------- */
 function nextQ(){
   if(currentIndex < questions.length-1){
     currentIndex++;
@@ -90,11 +124,13 @@ function prevQ(){
   }
 }
 
+/* ---------- LANGUAGE ---------- */
 function toggleLang(){
   lang = lang === "en" ? "ml" : "en";
   renderQuestion();
 }
 
+/* ---------- SUBMIT ---------- */
 function submitExam(){
   let score = 0;
 
@@ -110,6 +146,15 @@ function submitExam(){
   window.location.href = "temp_result.html";
 }
 
+/* ---------- EXIT ---------- */
+function exitExam(){
+  window.location.href = "temp_dashboard.html";
+}
+
+/* ---------- START ---------- */
 loadQuestions();
+
 </script>
 
+</body>
+</html>
