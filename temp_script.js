@@ -1,10 +1,10 @@
 console.log("TEMP SCRIPT LOADED");
 
-// Wait until page loads
 document.addEventListener("DOMContentLoaded", function () {
+
   console.log("DOM READY");
 
-  // LOGIN FUNCTION
+  // LOGIN
   window.login = function () {
     const nameInput = document.getElementById("name");
 
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
     window.location.href = "temp_dashboard.html";
   };
 
-  // SELECT LEVEL FUNCTION
+  // SELECT LEVEL
   window.selectLevel = function (level) {
     localStorage.setItem("temp_level", level);
 
