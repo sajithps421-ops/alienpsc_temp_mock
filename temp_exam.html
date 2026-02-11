@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
 
-  <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -23,8 +22,12 @@
     </div>
   </div>
 
-  <h3 id="qText">Loading...</h3>
+  <!-- TIMER PROGRESS BAR -->
+  <div style="width:100%; background:#e2e8f0; height:8px; border-radius:10px; margin:10px 0;">
+    <div id="progressBar" style="height:8px; width:100%; background:#22c55e; border-radius:10px;"></div>
+  </div>
 
+  <h3 id="qText">Loading...</h3>
   <div id="options"></div>
 
   <br>
@@ -36,13 +39,10 @@
 
 <script>
 
-/* ---------- SUPABASE INIT ---------- */
+/* ---------- SUPABASE ---------- */
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ---------- VARIABLES ---------- */
 let questions = [];
@@ -51,19 +51,15 @@ let answers = {};
 let lang = "en";
 
 const mockId = localStorage.getItem("mock_id");
+const userName = localStorage.getItem("temp_name");
 
-/* ---------- TIMER VARIABLES ---------- */
+/* ---------- TIMER ---------- */
 let timeLeft = 0;
+let totalTime = 0;
 let timerInterval;
 
 /* ---------- LOAD QUESTIONS ---------- */
 async function loadQuestions() {
-
-  if(!mockId){
-    alert("Mock not selected");
-    window.location.href = "temp_degree_list.html";
-    return;
-  }
 
   const { data, error } = await supabaseClient
     .from("temp_questions")
@@ -72,7 +68,6 @@ async function loadQuestions() {
     .order("id", { ascending: true });
 
   if(error){
-    console.error(error);
     alert("Error loading questions");
     return;
   }
@@ -85,8 +80,8 @@ async function loadQuestions() {
     return;
   }
 
-  /* ⏱ Dynamic Timer: 45 sec per question */
-  timeLeft = questions.length * 45;
+  totalTime = questions.length * 45;
+  timeLeft = totalTime;
 
   renderQuestion();
   startTimer();
@@ -100,26 +95,38 @@ function startTimer(){
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
 
-    const timerBox = document.getElementById("timerBox");
-
-    timerBox.innerText =
+    document.getElementById("timerBox").innerText =
       `⏱ ${minutes.toString().padStart(2,"0")}:${seconds.toString().padStart(2,"0")}`;
 
-    /* Red color when last 1 minute */
-    if(timeLeft <= 60){
-      timerBox.style.background = "#ef4444";
-      timerBox.style.color = "#fff";
+    /* Progress bar */
+    const percentage = (timeLeft / totalTime) * 100;
+    const progressBar = document.getElementById("progressBar");
+    progressBar.style.width = percentage + "%";
+
+    /* Color change */
+    if(timeLeft <= totalTime * 0.3){
+      progressBar.style.background = "#f59e0b";
+    }
+
+    if(timeLeft <= 10){
+      progressBar.style.background = "#ef4444";
+      playWarning();
     }
 
     if(timeLeft <= 0){
       clearInterval(timerInterval);
-      alert("Time Up! Exam Submitted Automatically.");
       submitExam();
     }
 
     timeLeft--;
 
   }, 1000);
+}
+
+/* ---------- WARNING SOUND ---------- */
+function playWarning(){
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  audio.play();
 }
 
 /* ---------- RENDER ---------- */
@@ -134,7 +141,6 @@ function renderQuestion(){
     lang === "en" ? q.question_en : q.question_ml;
 
   const options = lang === "en" ? q.options_en : q.options_ml;
-
   const optDiv = document.getElementById("options");
   optDiv.innerHTML = "";
 
@@ -156,7 +162,7 @@ function renderQuestion(){
   });
 }
 
-/* ---------- NAVIGATION ---------- */
+/* ---------- NAV ---------- */
 function nextQ(){
   if(currentIndex < questions.length-1){
     currentIndex++;
@@ -178,20 +184,35 @@ function toggleLang(){
 }
 
 /* ---------- SUBMIT ---------- */
-function submitExam(){
+async function submitExam(){
 
   clearInterval(timerInterval);
 
   let score = 0;
-
   questions.forEach((q,i)=>{
     if(answers[i] === q.correct_index){
       score++;
     }
   });
 
+  const timeUsed = totalTime - timeLeft;
+
+  /* SAVE TO SUPABASE */
+  await supabaseClient
+    .from("temp_results")
+    .insert([
+      {
+        user_name: userName,
+        mock_id: mockId,
+        score: score,
+        total: questions.length,
+        time_used: timeUsed
+      }
+    ]);
+
   localStorage.setItem("temp_score", score);
   localStorage.setItem("temp_total", questions.length);
+  localStorage.setItem("temp_time_used", timeUsed);
 
   window.location.href = "temp_result.html";
 }
@@ -209,3 +230,4 @@ loadQuestions();
 
 </body>
 </html>
+
