@@ -1,20 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Exam</title>
+  <title>Mock Exam</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
 </head>
 <body>
 
 <div class="card">
-  <h3 id="examTitle"></h3>
-  <h4 id="qText"></h4>
-  <div id="options"></div>
 
-  <button onclick="next()">Next</button>
+  <div class="top">
+    <span id="questionNumber">Question 1</span>
+    <button class="small-btn" onclick="goBack()">Exit</button>
+  </div>
+
+  <h3 id="questionText">Loading...</h3>
+
+  <div id="optionsContainer"></div>
+
+  <br>
+  <button onclick="nextQuestion()">Next</button>
+
 </div>
 
 <script src="temp_script.js"></script>
 </body>
 </html>
+
