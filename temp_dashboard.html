@@ -8,7 +8,12 @@
 <body>
 
 <div class="card">
-  <h2>Select Mock Level</h2>
+
+  <!-- 🔥 Welcome Section -->
+  <h2 id="welcomeText">Welcome</h2>
+  <p style="text-align:center; margin-bottom:20px;">
+    Select Mock Level
+  </p>
 
   <button onclick="selectLevel('degree')">
     🎓 Degree Level Mock Test
@@ -20,10 +25,40 @@
     🏫 10th & LGS Level Mock Test
   </button>
 
+  <br><br><br>
+
+  <!-- 🔐 Logout -->
+  <button id="logoutBtn" style="background:#ef4444; color:white;">
+    🚪 Logout
+  </button>
+
 </div>
 
-<script src="temp_script.js?v=5"></script>
+<script src="temp_script.js?v=7"></script>
+
+<script>
+
+/* 🔐 SESSION CHECK */
+const userName = localStorage.getItem("temp_name");
+
+if(!userName){
+  window.location.href = "temp_login.html";
+}
+
+/* 🔥 SHOW WELCOME MESSAGE */
+document.getElementById("welcomeText").innerText =
+  "Welcome, " + userName;
+
+/* 🔐 LOGOUT */
+document.getElementById("logoutBtn").addEventListener("click", function(){
+
+  localStorage.clear(); // clear entire session
+
+  window.location.replace("temp_login.html");
+
+});
+
+</script>
 
 </body>
 </html>
-
