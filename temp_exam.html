@@ -10,7 +10,6 @@
 
 <div class="card" id="questionBox">
 
-  <!-- TOP BAR -->
   <div class="top">
     <div id="qCount">Question 1</div>
 
@@ -21,7 +20,6 @@
     </div>
   </div>
 
-  <!-- PROGRESS BAR -->
   <div style="width:100%; background:#e2e8f0; height:8px; border-radius:10px; margin:10px 0;">
     <div id="progressBar" style="height:8px; width:100%; background:#22c55e; border-radius:10px;"></div>
   </div>
@@ -40,11 +38,19 @@
 
 /* ---------- SUPABASE ---------- */
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"; // 🔥 Replace with real key
+const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
+
+/* ---------- SESSION VALIDATION ---------- */
+const mockId = parseInt(localStorage.getItem("mock_id"));
+const userName = localStorage.getItem("temp_name");
+
+if(!mockId || !userName){
+  window.location.href = "temp_login.html";
+}
 
 /* ---------- VARIABLES ---------- */
 let questions = [];
@@ -53,23 +59,41 @@ let answers = {};
 let lang = "en";
 let examSubmitted = false;
 
-const mockId = parseInt(localStorage.getItem("mock_id"));
-const userName = localStorage.getItem("temp_name");
-
 /* ---------- TIMER ---------- */
 let timeLeft = 0;
 let totalTime = 0;
 let timerInterval;
 let warningPlayed = false;
 
+/* ---------- SECURITY CHECK BEFORE START ---------- */
+async function checkAlreadyAttempted(){
+
+  const { data, error } = await supabaseClient
+    .from("temp_results")
+    .select("id")
+    .eq("user_name", userName)
+    .eq("mock_id", mockId);
+
+  if(error){
+    alert("Error checking attempt");
+    window.location.href = "temp_dashboard.html";
+    return true;
+  }
+
+  if(data.length > 0){
+    // 🔒 Already attempted → redirect to result
+    window.location.href = "temp_result.html";
+    return true;
+  }
+
+  return false;
+}
+
 /* ---------- LOAD QUESTIONS ---------- */
 async function loadQuestions() {
 
-  if (!mockId || !userName) {
-    alert("Session expired");
-    window.location.href = "temp_login.html";
-    return;
-  }
+  const locked = await checkAlreadyAttempted();
+  if(locked) return;
 
   const { data, error } = await supabaseClient
     .from("temp_questions")
@@ -77,21 +101,20 @@ async function loadQuestions() {
     .eq("mock_id", mockId)
     .order("id", { ascending: true });
 
-  if (error) {
-    console.error(error);
+  if(error){
     alert("Error loading questions");
     return;
   }
 
   questions = data || [];
 
-  if (questions.length === 0) {
+  if(questions.length === 0){
     document.getElementById("questionBox").innerHTML =
       "<h3>No Questions Found</h3>";
     return;
   }
 
-  totalTime = questions.length * 45; // 45 sec per question
+  totalTime = questions.length * 45;
   timeLeft = totalTime;
 
   renderQuestion();
@@ -99,9 +122,9 @@ async function loadQuestions() {
 }
 
 /* ---------- TIMER ---------- */
-function startTimer() {
+function startTimer(){
 
-  timerInterval = setInterval(() => {
+  timerInterval = setInterval(()=>{
 
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
@@ -113,24 +136,24 @@ function startTimer() {
     const progressBar = document.getElementById("progressBar");
     progressBar.style.width = percentage + "%";
 
-    if (percentage <= 30) {
+    if(percentage <= 30){
       progressBar.style.background = "#f59e0b";
     }
 
-    if (timeLeft <= 10 && !warningPlayed) {
+    if(timeLeft <= 10 && !warningPlayed){
       warningPlayed = true;
-      playWarning();
       progressBar.style.background = "#ef4444";
+      playWarning();
     }
 
-    if (timeLeft <= 0) {
+    if(timeLeft <= 0){
       clearInterval(timerInterval);
       submitExam();
     }
 
     timeLeft--;
 
-  }, 1000);
+  },1000);
 }
 
 /* ---------- WARNING SOUND ---------- */
@@ -148,9 +171,9 @@ function renderQuestion(){
     `Question ${currentIndex+1} / ${questions.length}`;
 
   document.getElementById("qText").innerText =
-    lang === "en" ? q.question_en : q.question_ml;
+    lang==="en" ? q.question_en : q.question_ml;
 
-  const options = lang === "en" ? q.options_en : q.options_ml;
+  const options = lang==="en" ? q.options_en : q.options_ml;
   const optDiv = document.getElementById("options");
   optDiv.innerHTML = "";
 
@@ -172,7 +195,7 @@ function renderQuestion(){
   });
 }
 
-/* ---------- NAVIGATION ---------- */
+/* ---------- NAV ---------- */
 function nextQ(){
   if(currentIndex < questions.length-1){
     currentIndex++;
@@ -189,14 +212,14 @@ function prevQ(){
 
 /* ---------- LANGUAGE ---------- */
 function toggleLang(){
-  lang = lang === "en" ? "ml" : "en";
+  lang = lang==="en" ? "ml" : "en";
   renderQuestion();
 }
 
 /* ---------- SUBMIT ---------- */
 async function submitExam(){
 
-  if(examSubmitted) return; // prevent double submit
+  if(examSubmitted) return;
   examSubmitted = true;
 
   clearInterval(timerInterval);
@@ -210,23 +233,27 @@ async function submitExam(){
 
   const timeUsed = totalTime - timeLeft;
 
-  const { error } = await supabaseClient
+  // 🔐 DOUBLE CHECK BEFORE INSERT
+  const { data: existing } = await supabaseClient
     .from("temp_results")
-    .insert([
-      {
-        user_name: userName,
-        mock_id: mockId,
-        score: score,
-        total: questions.length,
-        time_used: timeUsed
-      }
-    ]);
+    .select("id")
+    .eq("user_name", userName)
+    .eq("mock_id", mockId);
 
-  if(error){
-    console.error(error);
-    alert("Error saving result");
+  if(existing.length > 0){
+    window.location.href = "temp_result.html";
     return;
   }
+
+  await supabaseClient
+    .from("temp_results")
+    .insert([{
+      user_name: userName,
+      mock_id: mockId,
+      score: score,
+      total: questions.length,
+      time_used: timeUsed
+  }]);
 
   localStorage.setItem("temp_score", score);
   localStorage.setItem("temp_total", questions.length);
