@@ -1,23 +1,72 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Result</title>
+  <title>Mock Result</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <div class="card">
-  <h2>Result</h2>
-  <h3 id="scoreText"></h3>
+  <h2>📊 Result Summary</h2>
 
-  <button onclick="viewRank()">View Rank List</button>
+  <div id="summary"></div>
+
+  <button onclick="goRank()">🏆 View Rank List</button>
+  <button onclick="goDashboard()">⬅ Dashboard</button>
 </div>
-<script> function viewRank(){
+
+<script>
+/* ---------- SUPABASE ---------- */
+const supabase = window.supabase.createClient(
+  "https://jnnrphexgnqfrguuvpcw.supabase.co",
+  "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
+);
+
+const userName = localStorage.getItem("temp_name");
+const mockId   = localStorage.getItem("mock_id");
+
+/* ---------- SECURITY ---------- */
+if(!userName || !mockId){
+  alert("Unauthorized access");
+  window.location.href = "temp_login.html";
+}
+
+/* ---------- LOAD RESULT ---------- */
+async function loadResult(){
+
+  const { data, error } = await supabase
+    .from("temp_results")
+    .select("*")
+    .eq("user_name", userName)
+    .eq("mock_id", mockId)
+    .single();
+
+  if(error || !data){
+    alert("Result not found");
+    window.location.href = "temp_dashboard.html";
+    return;
+  }
+
+  const summary = document.getElementById("summary");
+  summary.innerHTML = `
+    <p><strong>Name:</strong> ${data.user_name}</p>
+    <p><strong>Score:</strong> ${data.score} / ${data.total}</p>
+    <p><strong>Time Used:</strong> ${data.time_used} sec</p>
+  `;
+}
+
+function goRank(){
   window.location.href = "temp_rank.html";
-} </script>
-<script src="temp_script.js"></script>
+}
+
+function goDashboard(){
+  window.location.href = "temp_dashboard.html";
+}
+
+loadResult();
+</script>
+
 </body>
 </html>
-
