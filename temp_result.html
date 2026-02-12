@@ -9,54 +9,93 @@
 <body>
 
 <div class="card">
-  <h2>📊 Result Summary</h2>
+
+  <h2>📊 Mock Result</h2>
 
   <div id="summary"></div>
 
-  <button onclick="goRank()">🏆 View Rank List</button>
+  <div id="rankBox" style="margin-top:15px; font-weight:bold;"></div>
+
+  <br>
+
+  <button onclick="goRank()">🏆 Leaderboard</button>
   <button onclick="goDashboard()">⬅ Dashboard</button>
+
 </div>
 
 <script>
+
 /* ---------- SUPABASE ---------- */
 const supabase = window.supabase.createClient(
   "https://jnnrphexgnqfrguuvpcw.supabase.co",
   "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
+/* ---------- SESSION ---------- */
 const userName = localStorage.getItem("temp_name");
-const mockId   = localStorage.getItem("mock_id");
+const mockId   = parseInt(localStorage.getItem("mock_id"));
 
-/* ---------- SECURITY ---------- */
 if(!userName || !mockId){
-  alert("Unauthorized access");
   window.location.href = "temp_login.html";
+}
+
+/* ---------- FORMAT TIME ---------- */
+function formatTime(seconds){
+  const m = Math.floor(seconds/60);
+  const s = seconds%60;
+  return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
 }
 
 /* ---------- LOAD RESULT ---------- */
 async function loadResult(){
 
-  const { data, error } = await supabase
+  /* Get Current User Result */
+  const { data: userResult, error } = await supabase
     .from("temp_results")
     .select("*")
     .eq("user_name", userName)
     .eq("mock_id", mockId)
     .single();
 
-  if(error || !data){
+  if(error || !userResult){
     alert("Result not found");
     window.location.href = "temp_dashboard.html";
     return;
   }
 
+  /* Get Full Leaderboard */
+  const { data: leaderboard } = await supabase
+    .from("temp_results")
+    .select("*")
+    .eq("mock_id", mockId)
+    .order("score", { ascending:false })
+    .order("time_used", { ascending:true });
+
+  /* Calculate Rank */
+  let rank = 0;
+  leaderboard.forEach((item,index)=>{
+    if(item.user_name === userName){
+      rank = index + 1;
+    }
+  });
+
+  /* Show Summary */
   const summary = document.getElementById("summary");
+
   summary.innerHTML = `
-    <p><strong>Name:</strong> ${data.user_name}</p>
-    <p><strong>Score:</strong> ${data.score} / ${data.total}</p>
-    <p><strong>Time Used:</strong> ${data.time_used} sec</p>
+    <p><strong>Name:</strong> ${userResult.user_name}</p>
+    <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
+    <p><strong>Time Used:</strong> ${formatTime(userResult.time_used)}</p>
+  `;
+
+  /* Show Rank */
+  document.getElementById("rankBox").innerHTML = `
+    🎯 Your Rank: <span style="color:#6366f1;">#${rank}</span> 
+    out of ${leaderboard.length} participants
   `;
 }
 
+/* ---------- NAVIGATION ---------- */
 function goRank(){
   window.location.href = "temp_rank.html";
 }
@@ -65,7 +104,9 @@ function goDashboard(){
   window.location.href = "temp_dashboard.html";
 }
 
+/* ---------- START ---------- */
 loadResult();
+
 </script>
 
 </body>
