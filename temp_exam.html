@@ -27,10 +27,12 @@
   <h3 id="qText">Loading...</h3>
   <div id="options"></div>
 
+  <div id="explanationBox" style="margin-top:12px; font-size:14px;"></div>
+
   <br>
   <button onclick="prevQ()">Previous</button>
   <button onclick="nextQ()">Next</button>
-  <button onclick="submitExam()">Submit</button>
+  <button id="submitBtn" onclick="submitExam()">Submit</button>
 
 </div>
 
@@ -44,9 +46,10 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_ANON_KEY
 );
 
-/* ---------- SESSION VALIDATION ---------- */
+/* ---------- SESSION ---------- */
 const mockId = parseInt(localStorage.getItem("mock_id"));
 const userName = localStorage.getItem("temp_name");
+const reviewMode = localStorage.getItem("review_mode") === "true";
 
 if(!mockId || !userName){
   window.location.href = "temp_login.html";
@@ -65,23 +68,30 @@ let totalTime = 0;
 let timerInterval;
 let warningPlayed = false;
 
-/* ---------- SECURITY CHECK BEFORE START ---------- */
+/* ---------- REVIEW MODE SETUP ---------- */
+if(reviewMode){
+  document.getElementById("submitBtn").style.display = "none";
+  document.getElementById("timerBox").style.display = "none";
+  document.getElementById("progressBar").style.display = "none";
+
+  const savedAnswers = localStorage.getItem("review_answers");
+  if(savedAnswers){
+    answers = JSON.parse(savedAnswers);
+  }
+}
+
+/* ---------- SECURITY CHECK ---------- */
 async function checkAlreadyAttempted(){
 
-  const { data, error } = await supabaseClient
+  if(reviewMode) return false;
+
+  const { data } = await supabaseClient
     .from("temp_results")
     .select("id")
     .eq("user_name", userName)
     .eq("mock_id", mockId);
 
-  if(error){
-    alert("Error checking attempt");
-    window.location.href = "temp_dashboard.html";
-    return true;
-  }
-
   if(data.length > 0){
-    // 🔒 Already attempted → redirect to result
     window.location.href = "temp_result.html";
     return true;
   }
@@ -92,19 +102,16 @@ async function checkAlreadyAttempted(){
 /* ---------- LOAD QUESTIONS ---------- */
 async function loadQuestions() {
 
-  const locked = await checkAlreadyAttempted();
-  if(locked) return;
+  if(!reviewMode){
+    const locked = await checkAlreadyAttempted();
+    if(locked) return;
+  }
 
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("temp_questions")
     .select("*")
     .eq("mock_id", mockId)
     .order("id", { ascending: true });
-
-  if(error){
-    alert("Error loading questions");
-    return;
-  }
 
   questions = data || [];
 
@@ -114,11 +121,13 @@ async function loadQuestions() {
     return;
   }
 
-  totalTime = questions.length * 45;
-  timeLeft = totalTime;
+  if(!reviewMode){
+    totalTime = questions.length * 45;
+    timeLeft = totalTime;
+    startTimer();
+  }
 
   renderQuestion();
-  startTimer();
 }
 
 /* ---------- TIMER ---------- */
@@ -143,7 +152,6 @@ function startTimer(){
     if(timeLeft <= 10 && !warningPlayed){
       warningPlayed = true;
       progressBar.style.background = "#ef4444";
-      playWarning();
     }
 
     if(timeLeft <= 0){
@@ -154,12 +162,6 @@ function startTimer(){
     timeLeft--;
 
   },1000);
-}
-
-/* ---------- WARNING SOUND ---------- */
-function playWarning(){
-  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-  audio.play();
 }
 
 /* ---------- RENDER ---------- */
@@ -176,23 +178,49 @@ function renderQuestion(){
   const options = lang==="en" ? q.options_en : q.options_ml;
   const optDiv = document.getElementById("options");
   optDiv.innerHTML = "";
+  document.getElementById("explanationBox").innerHTML = "";
 
   options.forEach((opt,i)=>{
+
     const div = document.createElement("div");
     div.className = "option";
     div.innerText = opt;
 
-    div.onclick = ()=>{
-      answers[currentIndex] = i;
-      renderQuestion();
-    };
+    if(reviewMode){
 
-    if(answers[currentIndex] === i){
-      div.classList.add("selected");
+      if(answers[currentIndex] === i){
+        if(i === q.correct_index){
+          div.classList.add("correct");
+        }else{
+          div.classList.add("wrong");
+        }
+      }
+
+      if(i === q.correct_index){
+        div.classList.add("correct");
+      }
+
+    }else{
+
+      div.onclick = ()=>{
+        answers[currentIndex] = i;
+        renderQuestion();
+      };
+
+      if(answers[currentIndex] === i){
+        div.classList.add("selected");
+      }
     }
 
     optDiv.appendChild(div);
   });
+
+  /* SHOW EXPLANATION IN REVIEW MODE */
+  if(reviewMode){
+    document.getElementById("explanationBox").innerHTML =
+      `<strong>Explanation:</strong><br>
+      ${lang==="en" ? q.explanation_en : q.explanation_ml}`;
+  }
 }
 
 /* ---------- NAV ---------- */
@@ -233,18 +261,6 @@ async function submitExam(){
 
   const timeUsed = totalTime - timeLeft;
 
-  // 🔐 DOUBLE CHECK BEFORE INSERT
-  const { data: existing } = await supabaseClient
-    .from("temp_results")
-    .select("id")
-    .eq("user_name", userName)
-    .eq("mock_id", mockId);
-
-  if(existing.length > 0){
-    window.location.href = "temp_result.html";
-    return;
-  }
-
   await supabaseClient
     .from("temp_results")
     .insert([{
@@ -252,7 +268,8 @@ async function submitExam(){
       mock_id: mockId,
       score: score,
       total: questions.length,
-      time_used: timeUsed
+      time_used: timeUsed,
+      answers_json: answers
   }]);
 
   localStorage.setItem("temp_score", score);
@@ -265,6 +282,7 @@ async function submitExam(){
 /* ---------- EXIT ---------- */
 function exitExam(){
   clearInterval(timerInterval);
+  localStorage.removeItem("review_mode");
   window.location.href = "temp_dashboard.html";
 }
 
