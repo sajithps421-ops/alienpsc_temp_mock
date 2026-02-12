@@ -14,7 +14,7 @@
     <div id="qCount">Question 1</div>
 
     <div style="display:flex; gap:8px; align-items:center;">
-      <button class="small-btn" onclick="toggleLang()">🌐 EN / ML</button>
+      <button class="small-btn" id="langBtn" onclick="toggleLang()">🌐 EN / ML</button>
       <button class="small-btn" id="timerBox">⏱ 00:00</button>
       <button class="small-btn" onclick="exitExam()">Exit</button>
     </div>
@@ -38,16 +38,14 @@
 <script>
 
 /* ---------- SUPABASE ---------- */
-const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
 const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
+  "https://jnnrphexgnqfrguuvpcw.supabase.co",
+  "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
 /* ---------- SESSION ---------- */
-const userName = localStorage.getItem("temp_name");
-const level = localStorage.getItem("mock_level");
+const userName   = localStorage.getItem("temp_name");
+const level      = localStorage.getItem("mock_level");
 const mockNumber = parseInt(localStorage.getItem("mock_number"));
 const reviewMode = localStorage.getItem("review_mode") === "true";
 
@@ -62,13 +60,19 @@ let answers = {};
 let lang = "en";
 let examSubmitted = false;
 
+/* ---------- FORCE MALAYALAM FOR 10TH ---------- */
+if(level === "10th"){
+  lang = "ml";
+  document.getElementById("langBtn").style.display = "none";
+}
+
 /* ---------- TIMER ---------- */
 let timeLeft = 0;
 let totalTime = 0;
 let timerInterval;
 let warningPlayed = false;
 
-/* ---------- REVIEW MODE SETUP ---------- */
+/* ---------- REVIEW MODE ---------- */
 if(reviewMode){
 
   document.getElementById("submitBtn").style.display = "none";
@@ -81,7 +85,7 @@ if(reviewMode){
   }
 }
 
-/* ---------- SECURITY CHECK ---------- */
+/* ---------- CHECK ALREADY ATTEMPTED ---------- */
 async function checkAlreadyAttempted(){
 
   if(reviewMode) return false;
@@ -175,10 +179,15 @@ function renderQuestion(){
   document.getElementById("qCount").innerText =
     `Question ${currentIndex+1} / ${questions.length}`;
 
-  document.getElementById("qText").innerText =
-    lang==="en" ? q.question_en : q.question_ml;
+  // 🔥 AUTO FALLBACK FOR MALAYALAM ONLY QUESTIONS
+  const questionText =
+    lang==="en" && q.question_en ? q.question_en : q.question_ml;
 
-  const options = lang==="en" ? q.options_en : q.options_ml;
+  document.getElementById("qText").innerText = questionText;
+
+  const options =
+    lang==="en" && q.options_en ? q.options_en : q.options_ml;
+
   const optDiv = document.getElementById("options");
   optDiv.innerHTML = "";
   document.getElementById("explanationBox").innerHTML = "";
@@ -219,9 +228,14 @@ function renderQuestion(){
   });
 
   if(reviewMode){
+
+    const explanation =
+      lang==="en" && q.explanation_en
+      ? q.explanation_en
+      : q.explanation_ml;
+
     document.getElementById("explanationBox").innerHTML =
-      `<strong>Explanation:</strong><br>
-      ${lang==="en" ? q.explanation_en : q.explanation_ml}`;
+      `<strong>Explanation:</strong><br>${explanation}`;
   }
 }
 
@@ -242,6 +256,7 @@ function prevQ(){
 
 /* ---------- LANGUAGE ---------- */
 function toggleLang(){
+  if(level === "10th") return; // 🔒 No toggle for 10th
   lang = lang==="en" ? "ml" : "en";
   renderQuestion();
 }
@@ -274,10 +289,6 @@ async function submitExam(){
       time_used: timeUsed,
       answers_json: answers
   }]);
-
-  localStorage.setItem("temp_score", score);
-  localStorage.setItem("temp_total", questions.length);
-  localStorage.setItem("temp_time_used", timeUsed);
 
   window.location.href = "temp_result.html";
 }
