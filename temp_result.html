@@ -18,6 +18,7 @@
 
   <br>
 
+  <button id="solutionBtn">📘 View Solutions</button>
   <button id="rankBtn">🏆 Leaderboard</button>
   <button id="dashBtn">⬅ Dashboard</button>
 
@@ -27,13 +28,11 @@
 
 document.addEventListener("DOMContentLoaded", function(){
 
-  /* ---------- SUPABASE ---------- */
   const sb = window.supabase.createClient(
     "https://jnnrphexgnqfrguuvpcw.supabase.co",
     "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
   );
 
-  /* ---------- SESSION CHECK ---------- */
   const userName = localStorage.getItem("temp_name");
   const mockIdRaw = localStorage.getItem("mock_id");
 
@@ -44,14 +43,12 @@ document.addEventListener("DOMContentLoaded", function(){
 
   const mockId = parseInt(mockIdRaw);
 
-  /* ---------- FORMAT TIME ---------- */
   function formatTime(seconds){
     const m = Math.floor(seconds/60);
     const s = seconds%60;
     return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
   }
 
-  /* ---------- LOAD RESULT ---------- */
   async function loadResult(){
 
     try {
@@ -69,20 +66,19 @@ document.addEventListener("DOMContentLoaded", function(){
         return;
       }
 
+      /* SAVE answers_json TO LOCAL STORAGE FOR REVIEW MODE */
+      if(userResult.answers_json){
+        localStorage.setItem("review_answers", JSON.stringify(userResult.answers_json));
+      }
+
       /* LEADERBOARD */
-      const { data: leaderboard, error: rankError } = await sb
+      const { data: leaderboard } = await sb
         .from("temp_results")
         .select("*")
         .eq("mock_id", mockId)
         .order("score", { ascending:false })
         .order("time_used", { ascending:true });
 
-      if(rankError){
-        console.error(rankError);
-        return;
-      }
-
-      /* CALCULATE RANK */
       let rank = 0;
       leaderboard.forEach((item,index)=>{
         if(item.user_name === userName){
@@ -90,7 +86,6 @@ document.addEventListener("DOMContentLoaded", function(){
         }
       });
 
-      /* SHOW SUMMARY */
       document.getElementById("summary").innerHTML = `
         <p><strong>Name:</strong> ${userResult.user_name}</p>
         <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
@@ -108,7 +103,13 @@ document.addEventListener("DOMContentLoaded", function(){
     }
   }
 
-  /* ---------- BUTTON EVENTS ---------- */
+  /* ---------- BUTTONS ---------- */
+
+  document.getElementById("solutionBtn").addEventListener("click", function(){
+    localStorage.setItem("review_mode", "true");
+    window.location.href = "temp_exam.html";
+  });
+
   document.getElementById("rankBtn").addEventListener("click", function(){
     window.location.href = "temp_rank.html";
   });
