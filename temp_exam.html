@@ -37,13 +37,17 @@
 
 <script>
 
-/* ---------- SUPABASE ---------- */
+/* ===========================
+   SUPABASE
+===========================*/
 const supabaseClient = window.supabase.createClient(
   "https://jnnrphexgnqfrguuvpcw.supabase.co",
   "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
-/* ---------- SESSION ---------- */
+/* ===========================
+   SESSION
+===========================*/
 const userName   = localStorage.getItem("temp_name");
 const level      = localStorage.getItem("mock_level");
 const mockNumber = parseInt(localStorage.getItem("mock_number"));
@@ -53,26 +57,34 @@ if(!userName || !level || !mockNumber){
   window.location.href = "temp_login.html";
 }
 
-/* ---------- VARIABLES ---------- */
+/* ===========================
+   VARIABLES
+===========================*/
 let questions = [];
 let currentIndex = 0;
 let answers = {};
 let lang = "en";
 let examSubmitted = false;
 
-/* ---------- FORCE MALAYALAM FOR 10TH ---------- */
+/* ===========================
+   FORCE MALAYALAM FOR 10TH
+===========================*/
 if(level === "10th"){
   lang = "ml";
   document.getElementById("langBtn").style.display = "none";
 }
 
-/* ---------- TIMER ---------- */
+/* ===========================
+   TIMER
+===========================*/
 let timeLeft = 0;
 let totalTime = 0;
 let timerInterval;
 let warningPlayed = false;
 
-/* ---------- REVIEW MODE ---------- */
+/* ===========================
+   REVIEW MODE
+===========================*/
 if(reviewMode){
 
   document.getElementById("submitBtn").style.display = "none";
@@ -85,7 +97,9 @@ if(reviewMode){
   }
 }
 
-/* ---------- CHECK ALREADY ATTEMPTED ---------- */
+/* ===========================
+   CHECK ATTEMPT
+===========================*/
 async function checkAlreadyAttempted(){
 
   if(reviewMode) return false;
@@ -105,7 +119,9 @@ async function checkAlreadyAttempted(){
   return false;
 }
 
-/* ---------- LOAD QUESTIONS ---------- */
+/* ===========================
+   LOAD QUESTIONS
+===========================*/
 async function loadQuestions() {
 
   if(!reviewMode){
@@ -113,12 +129,17 @@ async function loadQuestions() {
     if(locked) return;
   }
 
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("temp_questions")
     .select("*")
     .eq("level", level)
     .eq("mock_number", mockNumber)
     .order("id", { ascending: true });
+
+  if(error){
+    alert("Error loading questions");
+    return;
+  }
 
   questions = data || [];
 
@@ -137,7 +158,9 @@ async function loadQuestions() {
   renderQuestion();
 }
 
-/* ---------- TIMER ---------- */
+/* ===========================
+   TIMER
+===========================*/
 function startTimer(){
 
   timerInterval = setInterval(()=>{
@@ -171,7 +194,9 @@ function startTimer(){
   },1000);
 }
 
-/* ---------- RENDER ---------- */
+/* ===========================
+   RENDER QUESTION
+===========================*/
 function renderQuestion(){
 
   const q = questions[currentIndex];
@@ -179,7 +204,6 @@ function renderQuestion(){
   document.getElementById("qCount").innerText =
     `Question ${currentIndex+1} / ${questions.length}`;
 
-  // 🔥 AUTO FALLBACK FOR MALAYALAM ONLY QUESTIONS
   const questionText =
     lang==="en" && q.question_en ? q.question_en : q.question_ml;
 
@@ -228,7 +252,6 @@ function renderQuestion(){
   });
 
   if(reviewMode){
-
     const explanation =
       lang==="en" && q.explanation_en
       ? q.explanation_en
@@ -239,7 +262,9 @@ function renderQuestion(){
   }
 }
 
-/* ---------- NAV ---------- */
+/* ===========================
+   NAVIGATION
+===========================*/
 function nextQ(){
   if(currentIndex < questions.length-1){
     currentIndex++;
@@ -254,14 +279,18 @@ function prevQ(){
   }
 }
 
-/* ---------- LANGUAGE ---------- */
+/* ===========================
+   LANGUAGE
+===========================*/
 function toggleLang(){
-  if(level === "10th") return; // 🔒 No toggle for 10th
+  if(level === "10th") return;
   lang = lang==="en" ? "ml" : "en";
   renderQuestion();
 }
 
-/* ---------- SUBMIT ---------- */
+/* ===========================
+   SUBMIT
+===========================*/
 async function submitExam(){
 
   if(examSubmitted) return;
@@ -278,7 +307,14 @@ async function submitExam(){
 
   const timeUsed = totalTime - timeLeft;
 
-  await supabaseClient
+  /* SAVE FOR RESULT PAGE */
+  localStorage.setItem("review_answers", JSON.stringify(answers));
+  localStorage.setItem("temp_score", score);
+  localStorage.setItem("temp_total", questions.length);
+  localStorage.setItem("temp_time_used", timeUsed);
+
+  /* INSERT RESULT */
+  const { error } = await supabaseClient
     .from("temp_results")
     .insert([{
       user_name: userName,
@@ -290,17 +326,27 @@ async function submitExam(){
       answers_json: answers
   }]);
 
+  if(error){
+    alert("Error saving result");
+    console.error(error);
+    return;
+  }
+
   window.location.href = "temp_result.html";
 }
 
-/* ---------- EXIT ---------- */
+/* ===========================
+   EXIT
+===========================*/
 function exitExam(){
   clearInterval(timerInterval);
   localStorage.removeItem("review_mode");
   window.location.href = "temp_dashboard.html";
 }
 
-/* ---------- START ---------- */
+/* ===========================
+   START
+===========================*/
 loadQuestions();
 
 </script>
