@@ -23,7 +23,9 @@
 
 <script>
 
-/* ---------- SUPABASE INIT ---------- */
+/* ===============================
+   SUPABASE INIT
+================================*/
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
 
@@ -32,26 +34,38 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_ANON_KEY
 );
 
-/* ---------- SESSION CHECK ---------- */
+/* ===============================
+   SESSION CHECK
+================================*/
 const userName = localStorage.getItem("temp_name");
 
 if(!userName){
+  alert("Session expired. Please login again.");
   window.location.href = "temp_login.html";
 }
 
-/* ---------- CONSTANT LEVEL ---------- */
+/* ===============================
+   CONSTANT LEVEL
+================================*/
 const LEVEL = "degree";
 
-/* ---------- START EXAM ---------- */
+/* ===============================
+   START EXAM
+================================*/
 async function startExam(mockNumber){
 
   try {
 
-    // Save level + mock number
+    // save session info
     localStorage.setItem("mock_level", LEVEL);
     localStorage.setItem("mock_number", mockNumber);
 
-    /* 🔒 Check if already attempted */
+    console.log("LEVEL:", LEVEL);
+    console.log("MOCK:", mockNumber);
+
+    /* ---------------------------
+       CHECK ALREADY ATTEMPTED
+    ---------------------------*/
     const { data, error } = await supabaseClient
       .from("temp_results")
       .select("id")
@@ -60,29 +74,44 @@ async function startExam(mockNumber){
       .eq("mock_number", mockNumber);
 
     if(error){
+      console.error("Attempt check error:", error);
       alert("Error checking attempt");
-      console.error(error);
       return;
     }
 
-    /* ✅ If already attempted → lock exam */
-    if(data.length > 0){
+    /* ---------------------------
+       IF ALREADY ATTEMPTED
+    ---------------------------*/
+    if(data && data.length > 0){
+
+      console.log("Already attempted → redirect result");
 
       localStorage.setItem("exam_locked", "true");
+      localStorage.setItem("review_mode", "true");
+
       window.location.href = "temp_result.html";
       return;
     }
 
-    /* 🚀 Allow exam */
+    /* ---------------------------
+       ALLOW EXAM
+    ---------------------------*/
+    console.log("New attempt → start exam");
+
     localStorage.setItem("exam_locked", "false");
+    localStorage.removeItem("review_mode");
+
     window.location.href = "temp_exam.html";
 
   } catch(err){
     console.error("Unexpected Error:", err);
+    alert("Something went wrong");
   }
 }
 
-/* ---------- BACK ---------- */
+/* ===============================
+   BACK
+================================*/
 function goBack(){
   window.location.href = "temp_dashboard.html";
 }
@@ -91,3 +120,4 @@ function goBack(){
 
 </body>
 </html>
+
