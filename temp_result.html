@@ -1,24 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mock Result</title>
+  <title>Mock Result - Analytics</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
+
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Chart JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    .stat-box{
+      background:#f8fafc;
+      padding:15px;
+      border-radius:12px;
+      margin-bottom:10px;
+    }
+    .highlight{
+      color:#10b981;
+      font-weight:bold;
+    }
+    .danger{
+      color:#ef4444;
+      font-weight:bold;
+    }
+  </style>
 </head>
 <body>
 
 <div class="card">
 
-  <h2>📊 Mock Result</h2>
+  <h2>📊 Performance Report</h2>
 
-  <div id="summary"></div>
+  <div id="overview"></div>
 
-  <div id="rankBox" style="margin-top:15px; font-weight:bold;"></div>
+  <canvas id="resultChart" style="margin-top:20px;"></canvas>
+
+  <div id="analytics" style="margin-top:25px;"></div>
 
   <br>
 
-  <button id="solutionBtn">📘 View Solutions</button>
+  <button id="solutionBtn">📖 View Solutions</button>
   <button id="rankBtn">🏆 Leaderboard</button>
   <button id="dashBtn">⬅ Dashboard</button>
 
@@ -34,89 +58,102 @@ document.addEventListener("DOMContentLoaded", function(){
   );
 
   const userName = localStorage.getItem("temp_name");
-  const mockIdRaw = localStorage.getItem("mock_id");
+  const mockId = parseInt(localStorage.getItem("mock_id"));
 
-  if(!userName || !mockIdRaw){
-    window.location.href = "temp_login.html";
+  if(!userName || !mockId){
+    window.location.href="temp_login.html";
     return;
   }
 
-  const mockId = parseInt(mockIdRaw);
-
-  function formatTime(seconds){
-    const m = Math.floor(seconds/60);
-    const s = seconds%60;
-    return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+  function formatTime(sec){
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return `${m}m ${s}s`;
   }
 
   async function loadResult(){
 
-    try {
+    const { data:userResult } = await sb
+      .from("temp_results")
+      .select("*")
+      .eq("user_name", userName)
+      .eq("mock_id", mockId)
+      .single();
 
-      /* USER RESULT */
-      const { data: userResult, error } = await sb
-        .from("temp_results")
-        .select("*")
-        .eq("user_name", userName)
-        .eq("mock_id", mockId)
-        .single();
-
-      if(error || !userResult){
-        window.location.href = "temp_dashboard.html";
-        return;
-      }
-
-      /* SAVE answers_json TO LOCAL STORAGE FOR REVIEW MODE */
-      if(userResult.answers_json){
-        localStorage.setItem("review_answers", JSON.stringify(userResult.answers_json));
-      }
-
-      /* LEADERBOARD */
-      const { data: leaderboard } = await sb
-        .from("temp_results")
-        .select("*")
-        .eq("mock_id", mockId)
-        .order("score", { ascending:false })
-        .order("time_used", { ascending:true });
-
-      let rank = 0;
-      leaderboard.forEach((item,index)=>{
-        if(item.user_name === userName){
-          rank = index + 1;
-        }
-      });
-
-      document.getElementById("summary").innerHTML = `
-        <p><strong>Name:</strong> ${userResult.user_name}</p>
-        <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
-        <p><strong>Time Used:</strong> ${formatTime(userResult.time_used)}</p>
-      `;
-
-      document.getElementById("rankBox").innerHTML = `
-        🎯 Your Rank: 
-        <span style="color:#6366f1;">#${rank}</span> 
-        out of ${leaderboard.length} participants
-      `;
-
-    } catch(err){
-      console.error("Unexpected Error:", err);
+    if(!userResult){
+      window.location.href="temp_dashboard.html";
+      return;
     }
+
+    const { data: leaderboard } = await sb
+      .from("temp_results")
+      .select("*")
+      .eq("mock_id", mockId)
+      .order("score",{ascending:false})
+      .order("time_used",{ascending:true});
+
+    let rank = leaderboard.findIndex(r=>r.user_name===userName)+1;
+
+    const correct = userResult.score;
+    const total = userResult.total;
+    const wrong = total - correct;
+    const accuracy = ((correct/total)*100).toFixed(1);
+    const timeUsed = userResult.time_used;
+
+    const negativeMark = wrong * 0.33;   // change if needed
+    const finalScore = (correct - negativeMark).toFixed(2);
+
+    /* ---------- OVERVIEW ---------- */
+    document.getElementById("overview").innerHTML = `
+      <div class="stat-box">
+        <p><strong>Name:</strong> ${userName}</p>
+        <p><strong>Rank:</strong> #${rank} / ${leaderboard.length}</p>
+        <p><strong>Accuracy:</strong> ${accuracy}%</p>
+      </div>
+
+      <div class="stat-box">
+        <p class="highlight">Correct: ${correct}</p>
+        <p class="danger">Wrong: ${wrong}</p>
+        <p>Unanswered: 0</p>
+      </div>
+
+      <div class="stat-box">
+        <p><strong>Final Score:</strong> ${finalScore}</p>
+        <p><strong>Total Time:</strong> ${formatTime(timeUsed)}</p>
+        <p><strong>Per Question:</strong> ${(timeUsed/total).toFixed(1)} sec</p>
+      </div>
+    `;
+
+    /* ---------- CHART ---------- */
+    new Chart(document.getElementById("resultChart"), {
+      type: 'doughnut',
+      data: {
+        labels: ["Correct", "Wrong"],
+        datasets: [{
+          data: [correct, wrong],
+          backgroundColor: ["#10b981","#ef4444"]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position:'bottom' }
+        }
+      }
+    });
+
   }
 
-  /* ---------- BUTTONS ---------- */
+  document.getElementById("solutionBtn").onclick=function(){
+    window.location.href="temp_solution.html";
+  }
 
-  document.getElementById("solutionBtn").addEventListener("click", function(){
-    localStorage.setItem("review_mode", "true");
-    window.location.href = "temp_exam.html";
-  });
+  document.getElementById("rankBtn").onclick=function(){
+    window.location.href="temp_rank.html";
+  }
 
-  document.getElementById("rankBtn").addEventListener("click", function(){
-    window.location.href = "temp_rank.html";
-  });
-
-  document.getElementById("dashBtn").addEventListener("click", function(){
-    window.location.href = "temp_dashboard.html";
-  });
+  document.getElementById("dashBtn").onclick=function(){
+    window.location.href="temp_dashboard.html";
+  }
 
   loadResult();
 
