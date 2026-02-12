@@ -2,29 +2,79 @@
 <html>
 <head>
   <title>Degree Mock Tests</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<div class="container">
-  <h2>Degree Level Mock Tests</h2>
+<div class="card">
+  <h2>🎓 Degree Level Mock Tests</h2>
 
-  <div class="mock-box" onclick="startExam(1)">
-    Mock Test 1
-  </div>
-
-  <div class="mock-box" onclick="startExam(2)">
-    Mock Test 2
-  </div>
-
-  <div class="mock-box" onclick="startExam(3)">
-    Mock Test 3
-  </div>
+  <div class="option" onclick="startExam(1)">Mock Test 1</div>
+  <div class="option" onclick="startExam(2)">Mock Test 2</div>
+  <div class="option" onclick="startExam(3)">Mock Test 3</div>
 
   <br>
   <button onclick="goBack()">⬅ Back</button>
 </div>
 
-<script src="temp_script.js?v=4"></script>
+<script>
+
+/* ---------- SUPABASE INIT ---------- */
+const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+/* ---------- CHECK LOGIN ---------- */
+const userName = localStorage.getItem("temp_name");
+
+if(!userName){
+  window.location.href = "temp_login.html";
+}
+
+/* ---------- START EXAM FUNCTION ---------- */
+async function startExam(mockNumber){
+
+  const mockId = mockNumber;
+
+  // 🔒 CHECK IF USER ALREADY ATTEMPTED
+  const { data, error } = await supabaseClient
+    .from("temp_results")
+    .select("id")
+    .eq("user_name", userName)
+    .eq("mock_id", mockId);
+
+  if(error){
+    alert("Error checking attempt");
+    return;
+  }
+
+  // ✅ If already attempted → go directly to result page
+  if(data.length > 0){
+    localStorage.setItem("mock_id", mockId);
+    localStorage.setItem("exam_locked", "true");
+    window.location.href = "temp_result.html";
+    return;
+  }
+
+  // 🚀 Otherwise allow exam
+  localStorage.setItem("mock_id", mockId);
+  localStorage.setItem("exam_locked", "false");
+  window.location.href = "temp_exam.html";
+}
+
+/* ---------- BACK ---------- */
+function goBack(){
+  window.location.href = "temp_dashboard.html";
+}
+
+</script>
+
 </body>
 </html>
