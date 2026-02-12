@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Rank List</title>
+  <title>Leaderboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -10,29 +10,54 @@
 
 <div class="card">
   <h2>🏆 Leaderboard</h2>
+
   <div id="rankList"></div>
+
+  <br>
   <button onclick="goDashboard()">⬅ Dashboard</button>
 </div>
 
 <script>
+
 /* ---------- SUPABASE ---------- */
 const supabase = window.supabase.createClient(
   "https://jnnrphexgnqfrguuvpcw.supabase.co",
   "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
+/* ---------- SESSION ---------- */
 const userName = localStorage.getItem("temp_name");
-const mockId   = localStorage.getItem("mock_id");
+const mockId   = parseInt(localStorage.getItem("mock_id"));
 
-/* ---------- SECURITY ---------- */
 if(!userName || !mockId){
-  alert("Unauthorized access");
   window.location.href = "temp_login.html";
 }
 
-/* ---------- LOAD RANK ---------- */
+/* ---------- FORMAT TIME ---------- */
+function formatTime(seconds){
+  const m = Math.floor(seconds/60);
+  const s = seconds%60;
+  return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+}
+
+/* ---------- LOAD LEADERBOARD ---------- */
 async function loadRank(){
 
+  /* 🔐 Ensure user has attempted exam */
+  const { data: userResult } = await supabase
+    .from("temp_results")
+    .select("*")
+    .eq("user_name", userName)
+    .eq("mock_id", mockId)
+    .single();
+
+  if(!userResult){
+    alert("You must complete the exam first");
+    window.location.href = "temp_dashboard.html";
+    return;
+  }
+
+  /* Get full rank list */
   const { data, error } = await supabase
     .from("temp_results")
     .select("*")
@@ -41,12 +66,14 @@ async function loadRank(){
     .order("time_used", { ascending: true });
 
   if(error){
-    alert("Error loading rank list");
+    alert("Error loading leaderboard");
     return;
   }
 
   const box = document.getElementById("rankList");
   box.innerHTML = "";
+
+  let currentUserDiv = null;
 
   data.forEach((row, index) => {
 
@@ -57,28 +84,39 @@ async function loadRank(){
 
     const div = document.createElement("div");
     div.className = "option";
+    div.style.marginBottom = "10px";
 
     div.innerHTML = `
-      <strong>${medal} ${index+1}. ${row.user_name}</strong><br>
+      <strong>${medal} #${index+1} — ${row.user_name}</strong><br>
       Score: ${row.score}/${row.total}<br>
-      Time: ${row.time_used} sec
+      Time: ${formatTime(row.time_used)}
     `;
 
-    /* 🔥 Highlight current user */
+    /* 🎯 Highlight Current User */
     if(row.user_name === userName){
       div.style.background = "#dcfce7";
       div.style.border = "2px solid #22c55e";
+      div.style.fontWeight = "bold";
+      currentUserDiv = div;
     }
 
     box.appendChild(div);
   });
+
+  /* 🔥 Auto scroll to current user */
+  if(currentUserDiv){
+    currentUserDiv.scrollIntoView({behavior:"smooth", block:"center"});
+  }
 }
 
+/* ---------- NAV ---------- */
 function goDashboard(){
   window.location.href = "temp_dashboard.html";
 }
 
+/* ---------- START ---------- */
 loadRank();
+
 </script>
 
 </body>
