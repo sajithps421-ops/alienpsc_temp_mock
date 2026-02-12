@@ -4,92 +4,81 @@
   <title>Rank List</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <div class="card">
-
-  <h2>🏆 Rank List</h2>
-
-  <div id="rankContainer">
-    Loading rank list...
-  </div>
-
-  <br>
-  <button onclick="goBack()">⬅ Back</button>
-
+  <h2>🏆 Leaderboard</h2>
+  <div id="rankList"></div>
+  <button onclick="goDashboard()">⬅ Dashboard</button>
 </div>
 
 <script>
-
 /* ---------- SUPABASE ---------- */
-const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
+const supabase = window.supabase.createClient(
+  "https://jnnrphexgnqfrguuvpcw.supabase.co",
+  "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
-/* ---------- LOAD RANK LIST ---------- */
-async function loadRankList(){
+const userName = localStorage.getItem("temp_name");
+const mockId   = localStorage.getItem("mock_id");
 
-  const mockId = localStorage.getItem("mock_id");
+/* ---------- SECURITY ---------- */
+if(!userName || !mockId){
+  alert("Unauthorized access");
+  window.location.href = "temp_login.html";
+}
 
-  const { data, error } = await supabaseClient
+/* ---------- LOAD RANK ---------- */
+async function loadRank(){
+
+  const { data, error } = await supabase
     .from("temp_results")
     .select("*")
     .eq("mock_id", mockId)
     .order("score", { ascending: false })
     .order("time_used", { ascending: true });
 
-  const container = document.getElementById("rankContainer");
-
   if(error){
-    console.error("SUPABASE ERROR:", error);
-    alert("Error: " + error.message);
+    alert("Error loading rank list");
     return;
   }
 
-  if(!data || data.length === 0){
-    container.innerHTML = "No attempts yet.";
-    return;
-  }
-
-  container.innerHTML = "";
+  const box = document.getElementById("rankList");
+  box.innerHTML = "";
 
   data.forEach((row, index) => {
 
-    const div = document.createElement("div");
-    div.style.padding = "12px";
-    div.style.marginTop = "10px";
-    div.style.borderRadius = "14px";
-    div.style.background = "#f1f5f9";
-    div.style.fontWeight = "600";
-
     let medal = "";
     if(index === 0) medal = "🥇";
-    if(index === 1) medal = "🥈";
-    if(index === 2) medal = "🥉";
+    else if(index === 1) medal = "🥈";
+    else if(index === 2) medal = "🥉";
+
+    const div = document.createElement("div");
+    div.className = "option";
 
     div.innerHTML = `
-      ${medal} Rank ${index+1} <br>
-      👤 ${row.user_name} <br>
-      🎯 Score: ${row.score} / ${row.total} <br>
-      ⏱ Time: ${row.time_used} sec
+      <strong>${medal} ${index+1}. ${row.user_name}</strong><br>
+      Score: ${row.score}/${row.total}<br>
+      Time: ${row.time_used} sec
     `;
 
-    container.appendChild(div);
+    /* 🔥 Highlight current user */
+    if(row.user_name === userName){
+      div.style.background = "#dcfce7";
+      div.style.border = "2px solid #22c55e";
+    }
+
+    box.appendChild(div);
   });
 }
 
-function goBack(){
+function goDashboard(){
   window.location.href = "temp_dashboard.html";
 }
 
-loadRankList();
-
+loadRank();
 </script>
 
 </body>
