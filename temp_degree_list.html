@@ -26,47 +26,60 @@
 /* ---------- SUPABASE INIT ---------- */
 const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
+
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
 
-/* ---------- CHECK LOGIN ---------- */
+/* ---------- SESSION CHECK ---------- */
 const userName = localStorage.getItem("temp_name");
 
 if(!userName){
   window.location.href = "temp_login.html";
 }
 
-/* ---------- START EXAM FUNCTION ---------- */
+/* ---------- CONSTANT LEVEL ---------- */
+const LEVEL = "degree";
+
+/* ---------- START EXAM ---------- */
 async function startExam(mockNumber){
 
-  const mockId = mockNumber;
+  try {
 
-  // 🔒 CHECK IF USER ALREADY ATTEMPTED
-  const { data, error } = await supabaseClient
-    .from("temp_results")
-    .select("id")
-    .eq("user_name", userName)
-    .eq("mock_id", mockId);
+    // Save level + mock number
+    localStorage.setItem("mock_level", LEVEL);
+    localStorage.setItem("mock_number", mockNumber);
 
-  if(error){
-    alert("Error checking attempt");
-    return;
+    /* 🔒 Check if already attempted */
+    const { data, error } = await supabaseClient
+      .from("temp_results")
+      .select("id")
+      .eq("user_name", userName)
+      .eq("level", LEVEL)
+      .eq("mock_number", mockNumber);
+
+    if(error){
+      alert("Error checking attempt");
+      console.error(error);
+      return;
+    }
+
+    /* ✅ If already attempted → lock exam */
+    if(data.length > 0){
+
+      localStorage.setItem("exam_locked", "true");
+      window.location.href = "temp_result.html";
+      return;
+    }
+
+    /* 🚀 Allow exam */
+    localStorage.setItem("exam_locked", "false");
+    window.location.href = "temp_exam.html";
+
+  } catch(err){
+    console.error("Unexpected Error:", err);
   }
-
-  // ✅ If already attempted → go directly to result page
-  if(data.length > 0){
-    localStorage.setItem("mock_id", mockId);
-    localStorage.setItem("exam_locked", "true");
-    window.location.href = "temp_result.html";
-    return;
-  }
-
-  // 🚀 Otherwise allow exam
-  localStorage.setItem("mock_id", mockId);
-  localStorage.setItem("exam_locked", "false");
-  window.location.href = "temp_exam.html";
 }
 
 /* ---------- BACK ---------- */
