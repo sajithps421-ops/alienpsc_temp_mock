@@ -4,8 +4,6 @@
   <title>Degree Mock Tests</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
-
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -23,49 +21,43 @@
 
 <script>
 
-/* ===============================
-   SUPABASE INIT
-================================*/
-const SUPABASE_URL = "https://jnnrphexgnqfrguuvpcw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l";
-
+/* ===========================
+   SUPABASE
+===========================*/
 const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
+  "https://jnnrphexgnqfrguuvpcw.supabase.co",
+  "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
-/* ===============================
+/* ===========================
    SESSION CHECK
-================================*/
+===========================*/
 const userName = localStorage.getItem("temp_name");
 
 if(!userName){
-  alert("Session expired. Please login again.");
+  alert("Session expired. Login again.");
   window.location.href = "temp_login.html";
 }
 
-/* ===============================
+/* ===========================
    CONSTANT LEVEL
-================================*/
+===========================*/
 const LEVEL = "degree";
 
-/* ===============================
+/* ===========================
    START EXAM
-================================*/
+===========================*/
 async function startExam(mockNumber){
 
-  try {
+  try{
 
-    // save session info
+    /* 🔥 SAVE SESSION FIRST */
     localStorage.setItem("mock_level", LEVEL);
     localStorage.setItem("mock_number", mockNumber);
 
-    console.log("LEVEL:", LEVEL);
-    console.log("MOCK:", mockNumber);
+    console.log("SESSION SET:", LEVEL, mockNumber);
 
-    /* ---------------------------
-       CHECK ALREADY ATTEMPTED
-    ---------------------------*/
+    /* 🔒 CHECK ATTEMPT */
     const { data, error } = await supabaseClient
       .from("temp_results")
       .select("id")
@@ -74,44 +66,36 @@ async function startExam(mockNumber){
       .eq("mock_number", mockNumber);
 
     if(error){
-      console.error("Attempt check error:", error);
+      console.error(error);
       alert("Error checking attempt");
       return;
     }
 
-    /* ---------------------------
-       IF ALREADY ATTEMPTED
-    ---------------------------*/
-    if(data && data.length > 0){
+    /* 🔒 ALREADY ATTEMPTED */
+    if(data.length > 0){
 
-      console.log("Already attempted → redirect result");
-
-      localStorage.setItem("exam_locked", "true");
-      localStorage.setItem("review_mode", "true");
+      localStorage.setItem("exam_locked","true");
+      localStorage.setItem("review_mode","false");
 
       window.location.href = "temp_result.html";
       return;
     }
 
-    /* ---------------------------
-       ALLOW EXAM
-    ---------------------------*/
-    console.log("New attempt → start exam");
-
-    localStorage.setItem("exam_locked", "false");
+    /* 🚀 ALLOW EXAM */
+    localStorage.setItem("exam_locked","false");
     localStorage.removeItem("review_mode");
 
     window.location.href = "temp_exam.html";
 
-  } catch(err){
+  }catch(err){
     console.error("Unexpected Error:", err);
     alert("Something went wrong");
   }
 }
 
-/* ===============================
+/* ===========================
    BACK
-================================*/
+===========================*/
 function goBack(){
   window.location.href = "temp_dashboard.html";
 }
@@ -120,4 +104,3 @@ function goBack(){
 
 </body>
 </html>
-
