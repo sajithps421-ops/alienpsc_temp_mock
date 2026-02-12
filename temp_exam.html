@@ -21,12 +21,11 @@
   </div>
 
   <div style="width:100%; background:#e2e8f0; height:8px; border-radius:10px; margin:10px 0;">
-    <div id="progressBar" style="height:8px; width:100%; background:#22c55e; border-radius:10px;"></div>
+    <div id="progressBar" style="height:8px; width:100%; background:#22c55e;"></div>
   </div>
 
   <h3 id="qText">Loading...</h3>
   <div id="options"></div>
-
   <div id="explanationBox" style="margin-top:12px; font-size:14px;"></div>
 
   <br>
@@ -47,11 +46,12 @@ const supabaseClient = window.supabase.createClient(
 );
 
 /* ---------- SESSION ---------- */
-const mockId = parseInt(localStorage.getItem("mock_id"));
 const userName = localStorage.getItem("temp_name");
+const level = localStorage.getItem("mock_level");
+const mockNumber = parseInt(localStorage.getItem("mock_number"));
 const reviewMode = localStorage.getItem("review_mode") === "true";
 
-if(!mockId || !userName){
+if(!userName || !level || !mockNumber){
   window.location.href = "temp_login.html";
 }
 
@@ -70,6 +70,7 @@ let warningPlayed = false;
 
 /* ---------- REVIEW MODE SETUP ---------- */
 if(reviewMode){
+
   document.getElementById("submitBtn").style.display = "none";
   document.getElementById("timerBox").style.display = "none";
   document.getElementById("progressBar").style.display = "none";
@@ -89,9 +90,10 @@ async function checkAlreadyAttempted(){
     .from("temp_results")
     .select("id")
     .eq("user_name", userName)
-    .eq("mock_id", mockId);
+    .eq("level", level)
+    .eq("mock_number", mockNumber);
 
-  if(data.length > 0){
+  if(data && data.length > 0){
     window.location.href = "temp_result.html";
     return true;
   }
@@ -110,7 +112,8 @@ async function loadQuestions() {
   const { data } = await supabaseClient
     .from("temp_questions")
     .select("*")
-    .eq("mock_id", mockId)
+    .eq("level", level)
+    .eq("mock_number", mockNumber)
     .order("id", { ascending: true });
 
   questions = data || [];
@@ -215,7 +218,6 @@ function renderQuestion(){
     optDiv.appendChild(div);
   });
 
-  /* SHOW EXPLANATION IN REVIEW MODE */
   if(reviewMode){
     document.getElementById("explanationBox").innerHTML =
       `<strong>Explanation:</strong><br>
@@ -265,7 +267,8 @@ async function submitExam(){
     .from("temp_results")
     .insert([{
       user_name: userName,
-      mock_id: mockId,
+      level: level,
+      mock_number: mockNumber,
       score: score,
       total: questions.length,
       time_used: timeUsed,
