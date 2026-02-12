@@ -18,8 +18,8 @@
 
   <br>
 
-  <button onclick="goRank()">🏆 Leaderboard</button>
-  <button onclick="goDashboard()">⬅ Dashboard</button>
+  <button id="rankBtn">🏆 Leaderboard</button>
+  <button id="dashBtn">⬅ Dashboard</button>
 
 </div>
 
@@ -31,13 +31,15 @@ const supabase = window.supabase.createClient(
   "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
-/* ---------- SESSION ---------- */
+/* ---------- SESSION SAFE CHECK ---------- */
 const userName = localStorage.getItem("temp_name");
-const mockId   = parseInt(localStorage.getItem("mock_id"));
+const mockIdRaw = localStorage.getItem("mock_id");
 
-if(!userName || !mockId){
+if(!userName || !mockIdRaw){
   window.location.href = "temp_login.html";
 }
+
+const mockId = parseInt(mockIdRaw);
 
 /* ---------- FORMAT TIME ---------- */
 function formatTime(seconds){
@@ -49,60 +51,69 @@ function formatTime(seconds){
 /* ---------- LOAD RESULT ---------- */
 async function loadResult(){
 
-  /* Get Current User Result */
-  const { data: userResult, error } = await supabase
-    .from("temp_results")
-    .select("*")
-    .eq("user_name", userName)
-    .eq("mock_id", mockId)
-    .single();
+  try {
 
-  if(error || !userResult){
-    alert("Result not found");
-    window.location.href = "temp_dashboard.html";
-    return;
-  }
+    /* USER RESULT */
+    const { data: userResult, error } = await supabase
+      .from("temp_results")
+      .select("*")
+      .eq("user_name", userName)
+      .eq("mock_id", mockId)
+      .single();
 
-  /* Get Full Leaderboard */
-  const { data: leaderboard } = await supabase
-    .from("temp_results")
-    .select("*")
-    .eq("mock_id", mockId)
-    .order("score", { ascending:false })
-    .order("time_used", { ascending:true });
-
-  /* Calculate Rank */
-  let rank = 0;
-  leaderboard.forEach((item,index)=>{
-    if(item.user_name === userName){
-      rank = index + 1;
+    if(error || !userResult){
+      alert("Result not found");
+      window.location.href = "temp_dashboard.html";
+      return;
     }
-  });
 
-  /* Show Summary */
-  const summary = document.getElementById("summary");
+    /* LEADERBOARD */
+    const { data: leaderboard, error: rankError } = await supabase
+      .from("temp_results")
+      .select("*")
+      .eq("mock_id", mockId)
+      .order("score", { ascending:false })
+      .order("time_used", { ascending:true });
 
-  summary.innerHTML = `
-    <p><strong>Name:</strong> ${userResult.user_name}</p>
-    <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
-    <p><strong>Time Used:</strong> ${formatTime(userResult.time_used)}</p>
-  `;
+    if(rankError){
+      console.error(rankError);
+      return;
+    }
 
-  /* Show Rank */
-  document.getElementById("rankBox").innerHTML = `
-    🎯 Your Rank: <span style="color:#6366f1;">#${rank}</span> 
-    out of ${leaderboard.length} participants
-  `;
+    /* RANK CALCULATION */
+    let rank = 0;
+    leaderboard.forEach((item,index)=>{
+      if(item.user_name === userName){
+        rank = index + 1;
+      }
+    });
+
+    /* SUMMARY */
+    document.getElementById("summary").innerHTML = `
+      <p><strong>Name:</strong> ${userResult.user_name}</p>
+      <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
+      <p><strong>Time Used:</strong> ${formatTime(userResult.time_used)}</p>
+    `;
+
+    document.getElementById("rankBox").innerHTML = `
+      🎯 Your Rank: 
+      <span style="color:#6366f1;">#${rank}</span> 
+      out of ${leaderboard.length} participants
+    `;
+
+  } catch(err){
+    console.error("Unexpected Error:", err);
+  }
 }
 
-/* ---------- NAVIGATION ---------- */
-function goRank(){
+/* ---------- BUTTON EVENTS (SAFER THAN INLINE) ---------- */
+document.getElementById("rankBtn").addEventListener("click", function(){
   window.location.href = "temp_rank.html";
-}
+});
 
-function goDashboard(){
+document.getElementById("dashBtn").addEventListener("click", function(){
   window.location.href = "temp_dashboard.html";
-}
+});
 
 /* ---------- START ---------- */
 loadResult();
