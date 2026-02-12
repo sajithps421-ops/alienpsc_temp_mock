@@ -25,98 +25,101 @@
 
 <script>
 
-/* ---------- SUPABASE ---------- */
-const supabase = window.supabase.createClient(
-  "https://jnnrphexgnqfrguuvpcw.supabase.co",
-  "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
-);
+document.addEventListener("DOMContentLoaded", function(){
 
-/* ---------- SESSION SAFE CHECK ---------- */
-const userName = localStorage.getItem("temp_name");
-const mockIdRaw = localStorage.getItem("mock_id");
+  /* ---------- SUPABASE ---------- */
+  const sb = window.supabase.createClient(
+    "https://jnnrphexgnqfrguuvpcw.supabase.co",
+    "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
+  );
 
-if(!userName || !mockIdRaw){
-  window.location.href = "temp_login.html";
-}
+  /* ---------- SESSION CHECK ---------- */
+  const userName = localStorage.getItem("temp_name");
+  const mockIdRaw = localStorage.getItem("mock_id");
 
-const mockId = parseInt(mockIdRaw);
-
-/* ---------- FORMAT TIME ---------- */
-function formatTime(seconds){
-  const m = Math.floor(seconds/60);
-  const s = seconds%60;
-  return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
-}
-
-/* ---------- LOAD RESULT ---------- */
-async function loadResult(){
-
-  try {
-
-    /* USER RESULT */
-    const { data: userResult, error } = await supabase
-      .from("temp_results")
-      .select("*")
-      .eq("user_name", userName)
-      .eq("mock_id", mockId)
-      .single();
-
-    if(error || !userResult){
-      alert("Result not found");
-      window.location.href = "temp_dashboard.html";
-      return;
-    }
-
-    /* LEADERBOARD */
-    const { data: leaderboard, error: rankError } = await supabase
-      .from("temp_results")
-      .select("*")
-      .eq("mock_id", mockId)
-      .order("score", { ascending:false })
-      .order("time_used", { ascending:true });
-
-    if(rankError){
-      console.error(rankError);
-      return;
-    }
-
-    /* RANK CALCULATION */
-    let rank = 0;
-    leaderboard.forEach((item,index)=>{
-      if(item.user_name === userName){
-        rank = index + 1;
-      }
-    });
-
-    /* SUMMARY */
-    document.getElementById("summary").innerHTML = `
-      <p><strong>Name:</strong> ${userResult.user_name}</p>
-      <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
-      <p><strong>Time Used:</strong> ${formatTime(userResult.time_used)}</p>
-    `;
-
-    document.getElementById("rankBox").innerHTML = `
-      🎯 Your Rank: 
-      <span style="color:#6366f1;">#${rank}</span> 
-      out of ${leaderboard.length} participants
-    `;
-
-  } catch(err){
-    console.error("Unexpected Error:", err);
+  if(!userName || !mockIdRaw){
+    window.location.href = "temp_login.html";
+    return;
   }
-}
 
-/* ---------- BUTTON EVENTS (SAFER THAN INLINE) ---------- */
-document.getElementById("rankBtn").addEventListener("click", function(){
-  window.location.href = "temp_rank.html";
+  const mockId = parseInt(mockIdRaw);
+
+  /* ---------- FORMAT TIME ---------- */
+  function formatTime(seconds){
+    const m = Math.floor(seconds/60);
+    const s = seconds%60;
+    return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+  }
+
+  /* ---------- LOAD RESULT ---------- */
+  async function loadResult(){
+
+    try {
+
+      /* USER RESULT */
+      const { data: userResult, error } = await sb
+        .from("temp_results")
+        .select("*")
+        .eq("user_name", userName)
+        .eq("mock_id", mockId)
+        .single();
+
+      if(error || !userResult){
+        window.location.href = "temp_dashboard.html";
+        return;
+      }
+
+      /* LEADERBOARD */
+      const { data: leaderboard, error: rankError } = await sb
+        .from("temp_results")
+        .select("*")
+        .eq("mock_id", mockId)
+        .order("score", { ascending:false })
+        .order("time_used", { ascending:true });
+
+      if(rankError){
+        console.error(rankError);
+        return;
+      }
+
+      /* CALCULATE RANK */
+      let rank = 0;
+      leaderboard.forEach((item,index)=>{
+        if(item.user_name === userName){
+          rank = index + 1;
+        }
+      });
+
+      /* SHOW SUMMARY */
+      document.getElementById("summary").innerHTML = `
+        <p><strong>Name:</strong> ${userResult.user_name}</p>
+        <p><strong>Score:</strong> ${userResult.score} / ${userResult.total}</p>
+        <p><strong>Time Used:</strong> ${formatTime(userResult.time_used)}</p>
+      `;
+
+      document.getElementById("rankBox").innerHTML = `
+        🎯 Your Rank: 
+        <span style="color:#6366f1;">#${rank}</span> 
+        out of ${leaderboard.length} participants
+      `;
+
+    } catch(err){
+      console.error("Unexpected Error:", err);
+    }
+  }
+
+  /* ---------- BUTTON EVENTS ---------- */
+  document.getElementById("rankBtn").addEventListener("click", function(){
+    window.location.href = "temp_rank.html";
+  });
+
+  document.getElementById("dashBtn").addEventListener("click", function(){
+    window.location.href = "temp_dashboard.html";
+  });
+
+  loadResult();
+
 });
-
-document.getElementById("dashBtn").addEventListener("click", function(){
-  window.location.href = "temp_dashboard.html";
-});
-
-/* ---------- START ---------- */
-loadResult();
 
 </script>
 
