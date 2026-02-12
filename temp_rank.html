@@ -11,27 +11,30 @@
 <div class="card">
   <h2>🏆 Leaderboard</h2>
 
-  <div id="rankList"></div>
+  <div id="rankList" style="margin-top:15px;"></div>
 
   <br>
-  <button onclick="goDashboard()">⬅ Dashboard</button>
+  <button id="dashBtn">⬅ Dashboard</button>
 </div>
 
 <script>
 
-/* ---------- SUPABASE ---------- */
-const supabase = window.supabase.createClient(
+/* ---------- CREATE CLIENT (NO VARIABLE CONFLICT) ---------- */
+const supabaseClient = window.supabase.createClient(
   "https://jnnrphexgnqfrguuvpcw.supabase.co",
   "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
 /* ---------- SESSION ---------- */
 const userName = localStorage.getItem("temp_name");
-const mockId   = parseInt(localStorage.getItem("mock_id"));
+const mockIdRaw = localStorage.getItem("mock_id");
 
-if(!userName || !mockId){
-  window.location.href = "temp_login.html";
+if(!mockIdRaw){
+  alert("Mock not selected");
+  window.location.href = "temp_dashboard.html";
 }
+
+const mockId = parseInt(mockIdRaw);
 
 /* ---------- FORMAT TIME ---------- */
 function formatTime(seconds){
@@ -40,40 +43,29 @@ function formatTime(seconds){
   return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
 }
 
-/* ---------- LOAD LEADERBOARD ---------- */
+/* ---------- LOAD RANK ---------- */
 async function loadRank(){
 
-  /* 🔐 Ensure user has attempted exam */
-  const { data: userResult } = await supabase
-    .from("temp_results")
-    .select("*")
-    .eq("user_name", userName)
-    .eq("mock_id", mockId)
-    .single();
-
-  if(!userResult){
-    alert("You must complete the exam first");
-    window.location.href = "temp_dashboard.html";
-    return;
-  }
-
-  /* Get full rank list */
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("temp_results")
     .select("*")
     .eq("mock_id", mockId)
-    .order("score", { ascending: false })
-    .order("time_used", { ascending: true });
+    .order("score", { ascending:false })
+    .order("time_used", { ascending:true });
 
   if(error){
-    alert("Error loading leaderboard");
+    console.error(error);
+    alert("Error loading rank list");
     return;
   }
 
   const box = document.getElementById("rankList");
   box.innerHTML = "";
 
-  let currentUserDiv = null;
+  if(!data || data.length === 0){
+    box.innerHTML = "<p>No participants yet.</p>";
+    return;
+  }
 
   data.forEach((row, index) => {
 
@@ -84,35 +76,27 @@ async function loadRank(){
 
     const div = document.createElement("div");
     div.className = "option";
-    div.style.marginBottom = "10px";
 
     div.innerHTML = `
-      <strong>${medal} #${index+1} — ${row.user_name}</strong><br>
+      <strong>${medal} ${index+1}. ${row.user_name}</strong><br>
       Score: ${row.score}/${row.total}<br>
       Time: ${formatTime(row.time_used)}
     `;
 
-    /* 🎯 Highlight Current User */
+    /* Highlight current user */
     if(row.user_name === userName){
       div.style.background = "#dcfce7";
       div.style.border = "2px solid #22c55e";
-      div.style.fontWeight = "bold";
-      currentUserDiv = div;
     }
 
     box.appendChild(div);
   });
-
-  /* 🔥 Auto scroll to current user */
-  if(currentUserDiv){
-    currentUserDiv.scrollIntoView({behavior:"smooth", block:"center"});
-  }
 }
 
-/* ---------- NAV ---------- */
-function goDashboard(){
+/* ---------- DASHBOARD BUTTON ---------- */
+document.getElementById("dashBtn").addEventListener("click", function(){
   window.location.href = "temp_dashboard.html";
-}
+});
 
 /* ---------- START ---------- */
 loadRank();
