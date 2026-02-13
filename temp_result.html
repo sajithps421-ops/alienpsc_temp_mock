@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
 
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Chart JS -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -60,7 +57,7 @@ const level = localStorage.getItem("mock_level");
 const mockNumber = parseInt(localStorage.getItem("mock_number"));
 
 if(!userName || !level || !mockNumber){
-  window.location.href="temp_login.html";
+  window.location.replace("temp_login.html");
   return;
 }
 
@@ -68,6 +65,7 @@ if(!userName || !level || !mockNumber){
    TIME FORMAT
 ===========================*/
 function formatTime(sec){
+  sec = sec || 0;
   const m = Math.floor(sec/60);
   const s = sec%60;
   return `${m}m ${s}s`;
@@ -78,97 +76,115 @@ function formatTime(sec){
 ===========================*/
 async function loadResult(){
 
-  /* ---------- USER RESULT ---------- */
-  const { data:userResult, error } = await sb
-    .from("temp_results")
-    .select("*")
-    .eq("user_name", userName)
-    .eq("level", level)
-    .eq("mock_number", mockNumber)
-    .single();
+  try{
 
-  if(error || !userResult){
-    window.location.href="temp_dashboard.html";
-    return;
-  }
+    /* ---------- USER RESULT ---------- */
+    const { data:userResult, error } = await sb
+      .from("temp_results")
+      .select("*")
+      .eq("user_name", userName)
+      .eq("level", level)
+      .eq("mock_number", mockNumber)
+      .limit(1)
+      .maybeSingle();
 
-  /* ---------- LEADERBOARD ---------- */
-  const { data: leaderboard } = await sb
-    .from("temp_results")
-    .select("*")
-    .eq("level", level)
-    .eq("mock_number", mockNumber)
-    .order("score",{ascending:false})
-    .order("time_used",{ascending:true});
-
-  /* ---------- RANK ---------- */
-  const rank = leaderboard.findIndex(
-    r=>r.user_name===userName
-  ) + 1;
-
-  /* ---------- BASIC STATS ---------- */
-  const correct = userResult.score;
-  const total = userResult.total;
-
-  const answersJson = userResult.answers_json || {};
-  const answeredCount = Object.keys(answersJson).length;
-  const unanswered = total - answeredCount;
-  const wrong = answeredCount - correct;
-
-  const accuracy = ((correct/total)*100).toFixed(1);
-  const timeUsed = userResult.time_used;
-
-  /* ---------- NEGATIVE MARK ---------- */
-  const negativeMark = wrong * 0.33;   // change if needed
-  const finalScore = (correct - negativeMark).toFixed(2);
-
-  /* ---------- SAVE ANSWERS FOR SOLUTION PAGE ---------- */
-  localStorage.setItem("review_answers", JSON.stringify(answersJson));
-
-  /* ---------- OVERVIEW ---------- */
-  document.getElementById("overview").innerHTML = `
-    <div class="stat-box">
-      <p><strong>Name:</strong> ${userName}</p>
-      <p><strong>Rank:</strong> #${rank} / ${leaderboard.length}</p>
-      <p><strong>Accuracy:</strong> ${accuracy}%</p>
-    </div>
-
-    <div class="stat-box">
-      <p class="highlight">Correct: ${correct}</p>
-      <p class="danger">Wrong: ${wrong}</p>
-      <p>Unanswered: ${unanswered}</p>
-    </div>
-
-    <div class="stat-box">
-      <p><strong>Final Score:</strong> ${finalScore}</p>
-      <p><strong>Total Time:</strong> ${formatTime(timeUsed)}</p>
-      <p><strong>Per Question:</strong> ${(timeUsed/total).toFixed(1)} sec</p>
-    </div>
-  `;
-
-  /* ---------- CHART ---------- */
-  new Chart(document.getElementById("resultChart"), {
-    type: 'doughnut',
-    data: {
-      labels: ["Correct", "Wrong", "Unanswered"],
-      datasets: [{
-        data: [correct, wrong, unanswered],
-        backgroundColor: ["#10b981","#ef4444","#94a3b8"]
-      }]
-    },
-    options: {
-      responsive:true,
-      plugins:{ legend:{ position:'bottom' } }
+    if(error || !userResult){
+      window.location.replace("temp_dashboard.html");
+      return;
     }
-  });
 
+    /* ---------- LEADERBOARD ---------- */
+    const { data: leaderboard } = await sb
+      .from("temp_results")
+      .select("*")
+      .eq("level", level)
+      .eq("mock_number", mockNumber)
+      .order("score",{ascending:false})
+      .order("time_used",{ascending:true});
+
+    const safeLeaderboard = leaderboard || [];
+
+    /* ---------- RANK ---------- */
+    const rankIndex = safeLeaderboard.findIndex(
+      r => r.user_name === userName
+    );
+
+    const rank = rankIndex >= 0 ? rankIndex + 1 : "-";
+
+    /* ---------- BASIC STATS ---------- */
+    const correct = userResult.score || 0;
+    const total = userResult.total || 0;
+
+    const answersJson = userResult.answers_json || {};
+    const answeredCount = Object.keys(answersJson).length;
+
+    const unanswered = Math.max(0, total - answeredCount);
+    const wrong = Math.max(0, answeredCount - correct);
+
+    const accuracy =
+      total > 0 ? ((correct/total)*100).toFixed(1) : 0;
+
+    const timeUsed = userResult.time_used || 0;
+
+    /* ---------- NEGATIVE MARK ---------- */
+    const negativeMark = wrong * 0.33;
+    const finalScore = (correct - negativeMark).toFixed(2);
+
+    /* ---------- SAVE ANSWERS FOR REVIEW ---------- */
+    localStorage.setItem(
+      "review_answers",
+      JSON.stringify(answersJson)
+    );
+
+    /* ---------- OVERVIEW ---------- */
+    document.getElementById("overview").innerHTML = `
+      <div class="stat-box">
+        <p><strong>Name:</strong> ${userName}</p>
+        <p><strong>Rank:</strong> #${rank} / ${safeLeaderboard.length}</p>
+        <p><strong>Accuracy:</strong> ${accuracy}%</p>
+      </div>
+
+      <div class="stat-box">
+        <p class="highlight">Correct: ${correct}</p>
+        <p class="danger">Wrong: ${wrong}</p>
+        <p>Unanswered: ${unanswered}</p>
+      </div>
+
+      <div class="stat-box">
+        <p><strong>Final Score:</strong> ${finalScore}</p>
+        <p><strong>Total Time:</strong> ${formatTime(timeUsed)}</p>
+        <p><strong>Per Question:</strong>
+          ${ total ? (timeUsed/total).toFixed(1) : 0 } sec
+        </p>
+      </div>
+    `;
+
+    /* ---------- CHART ---------- */
+    new Chart(document.getElementById("resultChart"), {
+      type: 'doughnut',
+      data: {
+        labels: ["Correct", "Wrong", "Unanswered"],
+        datasets: [{
+          data: [correct, wrong, unanswered],
+          backgroundColor: ["#10b981","#ef4444","#94a3b8"]
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{ legend:{ position:'bottom' } }
+      }
+    });
+
+  }catch(err){
+    console.error(err);
+    alert("Failed to load result");
+  }
 }
 
 /* ===========================
    BUTTONS
 ===========================*/
 document.getElementById("solutionBtn").onclick=function(){
-
   localStorage.setItem("review_mode","true");
   window.location.href="temp_exam.html";
 }
@@ -188,7 +204,6 @@ document.getElementById("dashBtn").onclick=function(){
 loadResult();
 
 });
-
 </script>
 
 </body>
