@@ -5,6 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    .question-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill,minmax(38px,1fr));
+      gap:6px;
+      margin-top:15px;
+    }
+    .qbox{
+      padding:6px 0;
+      border-radius:6px;
+      text-align:center;
+      font-size:13px;
+      cursor:pointer;
+      background:#e2e8f0;
+      border:1px solid #cbd5e1;
+    }
+    .qbox.current{
+      background:#3b82f6;
+      color:white;
+      font-weight:bold;
+    }
+    .qbox.answered{
+      background:#22c55e;
+      color:white;
+    }
+  </style>
 </head>
 
 <body>
@@ -33,6 +60,9 @@
   <button onclick="prevQ()">Previous</button>
   <button onclick="nextQ()">Next</button>
   <button id="submitBtn" onclick="submitExam()">Submit</button>
+
+  <!-- 🔥 QUESTION GRID -->
+  <div id="questionGrid" class="question-grid"></div>
 
 </div>
 
@@ -67,7 +97,6 @@ let answers = {};
 let lang = "en";
 let examSubmitted = false;
 
-/* force malayalam for 10th */
 if(level === "10th"){
   lang = "ml";
   document.getElementById("langBtn").style.display = "none";
@@ -90,7 +119,6 @@ if(reviewMode){
 
 /* ================= CHECK ATTEMPT ================= */
 async function checkAlreadyAttempted(){
-
   if(reviewMode) return false;
 
   const { data } = await supabaseClient
@@ -123,7 +151,6 @@ async function loadQuestions(){
     .order("id",{ascending:true});
 
   if(error){
-    console.error(error);
     alert("Error loading questions");
     return;
   }
@@ -136,6 +163,8 @@ async function loadQuestions(){
     return;
   }
 
+  createQuestionGrid();
+
   if(!reviewMode){
     totalTime = questions.length * 45;
     timeLeft = totalTime;
@@ -143,6 +172,48 @@ async function loadQuestions(){
   }
 
   renderQuestion();
+}
+
+/* ================= QUESTION GRID ================= */
+function createQuestionGrid(){
+
+  const grid = document.getElementById("questionGrid");
+  grid.innerHTML = "";
+
+  questions.forEach((q,i)=>{
+
+    const box = document.createElement("div");
+    box.className = "qbox";
+    box.innerText = i+1;
+
+    box.onclick = ()=>{
+      currentIndex = i;
+      renderQuestion();
+    };
+
+    grid.appendChild(box);
+  });
+
+  updateGridHighlight();
+}
+
+function updateGridHighlight(){
+
+  const boxes = document.querySelectorAll(".qbox");
+
+  boxes.forEach((box,i)=>{
+
+    box.classList.remove("current");
+    box.classList.remove("answered");
+
+    if(i === currentIndex){
+      box.classList.add("current");
+    }
+
+    if(answers[i] !== undefined){
+      box.classList.add("answered");
+    }
+  });
 }
 
 /* ================= TIMER ================= */
@@ -179,6 +250,8 @@ function parseJSON(val){
 
 /* ================= RENDER ================= */
 function renderQuestion(){
+
+  updateGridHighlight();
 
   const q = questions[currentIndex];
 
@@ -218,6 +291,7 @@ function renderQuestion(){
 
       div.onclick = ()=>{
         answers[currentIndex] = i;
+        updateGridHighlight();
         renderQuestion();
       };
 
@@ -250,7 +324,7 @@ function toggleLang(){
   renderQuestion();
 }
 
-/* ================= SUBMIT (FINAL FIX) ================= */
+/* ================= SUBMIT ================= */
 async function submitExam(){
 
   if(examSubmitted) return;
@@ -265,10 +339,8 @@ async function submitExam(){
 
   const timeUsed = totalTime - timeLeft;
 
-  /* store for solution page */
   localStorage.setItem("review_answers", JSON.stringify(answers));
 
-  /* IMPORTANT: store JSON OBJECT not string */
   const { error } = await supabaseClient
     .from("temp_results")
     .insert([{
@@ -282,9 +354,8 @@ async function submitExam(){
   }]);
 
   if(error){
-    console.error("INSERT ERROR:", error);
     alert("Error saving result");
-    examSubmitted = false;
+    examSubmitted=false;
     return;
   }
 
