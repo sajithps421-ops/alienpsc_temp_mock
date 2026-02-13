@@ -19,43 +19,52 @@
 
 <script>
 
-/* ---------- CREATE CLIENT (NO VARIABLE CONFLICT) ---------- */
+/* ===========================
+   SUPABASE
+===========================*/
 const supabaseClient = window.supabase.createClient(
   "https://jnnrphexgnqfrguuvpcw.supabase.co",
   "sb_publishable_eqpEBptiUc85ICVGIx65vA_nZfQg9-l"
 );
 
-/* ---------- SESSION ---------- */
-const userName = localStorage.getItem("temp_name");
-const mockIdRaw = localStorage.getItem("mock_id");
+/* ===========================
+   SESSION (UPDATED)
+===========================*/
+const userName   = localStorage.getItem("temp_name");
+const level      = localStorage.getItem("mock_level");
+const mockNumber = parseInt(localStorage.getItem("mock_number"));
 
-if(!mockIdRaw){
+if(!userName || !level || isNaN(mockNumber)){
   alert("Mock not selected");
   window.location.href = "temp_dashboard.html";
 }
 
-const mockId = parseInt(mockIdRaw);
-
-/* ---------- FORMAT TIME ---------- */
+/* ===========================
+   TIME FORMAT
+===========================*/
 function formatTime(seconds){
+  seconds = seconds || 0;
   const m = Math.floor(seconds/60);
   const s = seconds%60;
   return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
 }
 
-/* ---------- LOAD RANK ---------- */
+/* ===========================
+   LOAD RANK LIST
+===========================*/
 async function loadRank(){
 
   const { data, error } = await supabaseClient
     .from("temp_results")
     .select("*")
-    .eq("mock_id", mockId)
+    .eq("level", level)
+    .eq("mock_number", mockNumber)
     .order("score", { ascending:false })
     .order("time_used", { ascending:true });
 
   if(error){
     console.error(error);
-    alert("Error loading rank list");
+    alert("Error loading leaderboard");
     return;
   }
 
@@ -83,7 +92,7 @@ async function loadRank(){
       Time: ${formatTime(row.time_used)}
     `;
 
-    /* Highlight current user */
+    /* highlight current user */
     if(row.user_name === userName){
       div.style.background = "#dcfce7";
       div.style.border = "2px solid #22c55e";
@@ -93,12 +102,16 @@ async function loadRank(){
   });
 }
 
-/* ---------- DASHBOARD BUTTON ---------- */
-document.getElementById("dashBtn").addEventListener("click", function(){
+/* ===========================
+   DASHBOARD BUTTON
+===========================*/
+document.getElementById("dashBtn").onclick = function(){
   window.location.href = "temp_dashboard.html";
-});
+};
 
-/* ---------- START ---------- */
+/* ===========================
+   START
+===========================*/
 loadRank();
 
 </script>
