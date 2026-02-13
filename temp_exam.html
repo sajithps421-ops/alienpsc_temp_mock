@@ -53,8 +53,16 @@ const level      = localStorage.getItem("mock_level");
 const mockNumber = parseInt(localStorage.getItem("mock_number"));
 const reviewMode = localStorage.getItem("review_mode") === "true";
 
-if(!userName || !level || !mockNumber){
+if(!userName){
+  alert("Session expired. Please login again.");
   window.location.href = "temp_login.html";
+  throw new Error("No user session");
+}
+
+if(!level || !mockNumber){
+  alert("Mock not selected. Please choose a mock test.");
+  window.location.href = "temp_dashboard.html";
+  throw new Error("Mock not selected");
 }
 
 /* ===========================
