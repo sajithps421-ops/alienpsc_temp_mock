@@ -34,26 +34,47 @@
 
 </div>
 
-<script src="temp_script.js?v=7"></script>
-
 <script>
 
 /* 🔐 SESSION CHECK */
 const userName = localStorage.getItem("temp_name");
 
 if(!userName){
-  window.location.href = "temp_login.html";
+  window.location.replace("temp_login.html");
 }
 
-/* 🔥 SHOW WELCOME MESSAGE */
+/* 🔥 SHOW WELCOME */
 document.getElementById("welcomeText").innerText =
   "Welcome, " + userName;
 
-/* 🔐 LOGOUT */
+
+/* =======================================================
+   ⭐ LEVEL SELECT (VERY IMPORTANT FIX)
+   ======================================================= */
+
+function selectLevel(level){
+
+  /* CLEAR OLD EXAM SESSION */
+  localStorage.removeItem("mock_number");
+  localStorage.removeItem("review_mode");
+  localStorage.removeItem("review_answers");
+  localStorage.removeItem("exam_locked");
+
+  /* SAVE NEW LEVEL */
+  localStorage.setItem("mock_level", level);
+
+  /* NAVIGATE */
+  window.location.href = "temp_degree_list.html";
+}
+
+
+/* =======================================================
+   🔐 LOGOUT
+   ======================================================= */
+
 document.getElementById("logoutBtn").addEventListener("click", function(){
 
-  localStorage.clear(); // clear entire session
-
+  localStorage.clear();
   window.location.replace("temp_login.html");
 
 });
