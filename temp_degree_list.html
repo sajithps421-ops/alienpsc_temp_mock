@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Degree Mock Tests</title>
+  <title>Mock Tests</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="temp_style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -9,7 +9,7 @@
 <body>
 
 <div class="card">
-  <h2>🎓 Degree Level Mock Tests</h2>
+  <h2 id="pageTitle">Mock Tests</h2>
 
   <div class="option" onclick="startExam(1)">Mock Test 1</div>
   <div class="option" onclick="startExam(2)">Mock Test 2</div>
@@ -33,16 +33,26 @@ const supabaseClient = window.supabase.createClient(
    SESSION CHECK
 ===========================*/
 const userName = localStorage.getItem("temp_name");
+const LEVEL = localStorage.getItem("mock_level");
 
 if(!userName){
   alert("Session expired. Login again.");
-  window.location.href = "temp_login.html";
+  window.location.replace("temp_login.html");
+}
+
+if(!LEVEL){
+  alert("Level not selected. Please select level again.");
+  window.location.replace("temp_dashboard.html");
 }
 
 /* ===========================
-   CONSTANT LEVEL
+   DYNAMIC TITLE
 ===========================*/
-const LEVEL = "degree";
+document.getElementById("pageTitle").innerText =
+  LEVEL === "degree"
+  ? "🎓 Degree Level Mock Tests"
+  : "🏫 10th & LGS Level Mock Tests";
+
 
 /* ===========================
    START EXAM
@@ -51,13 +61,12 @@ async function startExam(mockNumber){
 
   try{
 
-    /* 🔥 SAVE SESSION FIRST */
-    localStorage.setItem("mock_level", LEVEL);
+    /* SAVE SESSION */
     localStorage.setItem("mock_number", mockNumber);
 
-    console.log("SESSION SET:", LEVEL, mockNumber);
+    console.log("SESSION:", LEVEL, mockNumber);
 
-    /* 🔒 CHECK ATTEMPT */
+    /* CHECK ATTEMPT */
     const { data, error } = await supabaseClient
       .from("temp_results")
       .select("id")
@@ -71,24 +80,24 @@ async function startExam(mockNumber){
       return;
     }
 
-    /* 🔒 ALREADY ATTEMPTED */
+    /* ALREADY ATTEMPTED */
     if(data.length > 0){
 
       localStorage.setItem("exam_locked","true");
-      localStorage.setItem("review_mode","false");
+      localStorage.removeItem("review_mode");
 
       window.location.href = "temp_result.html";
       return;
     }
 
-    /* 🚀 ALLOW EXAM */
+    /* ALLOW EXAM */
     localStorage.setItem("exam_locked","false");
     localStorage.removeItem("review_mode");
 
     window.location.href = "temp_exam.html";
 
   }catch(err){
-    console.error("Unexpected Error:", err);
+    console.error(err);
     alert("Something went wrong");
   }
 }
